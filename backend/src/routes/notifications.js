@@ -106,4 +106,70 @@ router.post(
   }
 );
 
+/** PUT /api/notifications/:id — Admin only */
+router.put(
+  '/:id',
+  protect,
+  adminOnly,
+  [
+    param('id').isInt().withMessage('ID invalide.'),
+    body('title').notEmpty().withMessage('Titre requis.'),
+    body('message').notEmpty().withMessage('Message requis.'),
+  ],
+  validateRequest,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { title, message } = req.body;
+      
+      const [result] = await pool.execute(
+        'UPDATE notifications SET title = ?, message = ? WHERE id = ?',
+        [title, message, id]
+      );
+      
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ success: false, message: 'Notification introuvable.' });
+      }
+      
+      const [rows] = await pool.execute(
+        'SELECT id, title, message, created_at, created_by FROM notifications WHERE id = ?',
+        [id]
+      );
+      
+      res.json({ success: true, notification: rows[0] });
+    } catch (err) {
+      console.error('[PUT /api/notifications/:id]', err.message);
+      res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    }
+  }
+);
+
+/** DELETE /api/notifications/:id — Admin only */
+router.delete(
+  '/:id',
+  protect,
+  adminOnly,
+  [param('id').isInt().withMessage('ID invalide.')],
+  validateRequest,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const [result] = await pool.execute(
+        'DELETE FROM notifications WHERE id = ?',
+        [id]
+      );
+      
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ success: false, message: 'Notification introuvable.' });
+      }
+      
+      res.json({ success: true, message: 'Notification supprimée avec succès.' });
+    } catch (err) {
+      console.error('[DELETE /api/notifications/:id]', err.message);
+      res.status(500).json({ success: false, message: 'Erreur serveur.' });
+    }
+  }
+);
+
 module.exports = router;

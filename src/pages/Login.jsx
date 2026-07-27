@@ -1,13 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useGlobalStore } from '../store/globalStore';
 
-const USERS = [
-  { name: 'Phrasia Mosengo', role: 'admin', email: 'mosengophrasia1@gmail.com', initials: 'PM', badge: 'Admin', badgeColor: '#ef4444' }
-];
-
 export default function Login() {
-  const { login, register } = useGlobalStore();
-  const [isRegister, setIsRegister] = useState(false);
+  const { login, register, forgotPassword, resetPassword } = useGlobalStore();
+  const [mode, setMode] = useState('login'); // 'login' | 'register' | 'forgot' | 'reset'
+  const [resetToken, setResetToken] = useState('');
   const [formData, setFormData] = useState({
     nom_prenom: '',
     email: '',
@@ -18,17 +15,29 @@ export default function Login() {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [focused, setFocused] = useState('');
 
-  // Pré-remplissage de la clé via URL : /register?key=JRSD-XXXX
+  // Pré-remplissage de la clé via URL : /register?key=JRSD-XXXX ou reset token
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const key = params.get('key');
+      const token = params.get('token');
       const wantsRegister = window.location.pathname === '/register' || params.get('register') === '1';
-      if (wantsRegister) setIsRegister(true);
+      const wantsReset = window.location.pathname === '/reset-password' || token;
+
+      if (wantsReset) {
+        setMode('reset');
+        if (token) setResetToken(token);
+      } else if (wantsRegister) {
+        setMode('register');
+      } else {
+        setMode('login');
+      }
+
       if (key) {
-        setIsRegister(true);
+        setMode('register');
         setFormData((prev) => ({ ...prev, cle_activation: key }));
       }
     } catch {
@@ -39,13 +48,15 @@ export default function Login() {
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setError('');
+    setSuccessMessage('');
   };
 
   const handleSubmit = async () => {
     setError('');
+    setSuccessMessage('');
     setLoading(true);
     
-    if (isRegister) {
+    if (mode === 'register') {
       if (!formData.nom_prenom || !formData.email || !formData.password || !formData.fonction || !formData.cle_activation) {
          setError('Veuillez remplir tous les champs.');
          setLoading(false);
@@ -60,7 +71,7 @@ export default function Login() {
          role: 'employe'
       });
       if (!res.success) setError(res.message);
-    } else {
+    } else if (mode === 'login') {
       if (!formData.email || !formData.password) {
          setError('Veuillez remplir email et mot de passe.');
          setLoading(false);
@@ -68,19 +79,39 @@ export default function Login() {
       }
       const res = await login(formData.email, formData.password);
       if (!res.success) setError(res.message);
+    } else if (mode === 'forgot') {
+      if (!formData.email) {
+         setError('Veuillez saisir votre adresse e-mail.');
+         setLoading(false);
+         return;
+      }
+      const res = await forgotPassword(formData.email);
+      if (res.success) {
+        setSuccessMessage(res.message);
+      } else {
+        setError(res.message);
+      }
+    } else if (mode === 'reset') {
+      if (!formData.password) {
+         setError('Veuillez saisir votre nouveau mot de passe.');
+         setLoading(false);
+         return;
+      }
+      const res = await resetPassword(resetToken, formData.password);
+      if (res.success) {
+        setSuccessMessage(res.message);
+        setTimeout(() => {
+          setMode('login');
+          setSuccessMessage('');
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }, 4000);
+      } else {
+        setError(res.message);
+      }
     }
     setLoading(false);
   };
 
-  const handleQuick = (u) => {
-    setIsRegister(false);
-    setFormData({
-       ...formData,
-       email: u.email,
-       password: '000'
-    });
-    setError('');
-  };
 
   return (
     <>
@@ -375,14 +406,24 @@ export default function Login() {
                 </svg>
               </div>
               <div>
-                <h1 className="login-form-title">{isRegister ? "Inscription" : "Connexion"}</h1>
-                <p className="login-form-sub" onClick={() => setIsRegister(!isRegister)}>
-                  {isRegister ? "Déjà un compte ? Se connecter" : "Pas de compte ? Créer un compte"}
+                <h1 className="login-form-title">
+                  {mode === 'register' ? "Inscription" : mode === 'forgot' ? "Récupération" : mode === 'reset' ? "Nouveau MDP" : "Connexion"}
+                </h1>
+                <p className="login-form-sub" onClick={() => {
+                  setError('');
+                  setSuccessMessage('');
+                  if (mode === 'login') {
+                    setMode('register');
+                  } else {
+                    setMode('login');
+                  }
+                }}>
+                  {mode === 'register' ? "Déjà un compte ? Se connecter" : mode === 'forgot' || mode === 'reset' ? "Retour à la connexion" : "Pas de compte ? Créer un compte"}
                 </p>
               </div>
             </div>
 
-            {isRegister && (
+            {mode === 'register' && (
                <div className="login-field">
                  <label className="login-label" htmlFor="login-nom_prenom">Nom & Prénom</label>
                  <div className="login-input-wrap">
@@ -403,96 +444,127 @@ export default function Login() {
                </div>
             )}
 
-            <div className="login-field">
-              <label className="login-label" htmlFor="login-email">Adresse e-mail</label>
-              <div className="login-input-wrap">
-                <span className="login-input-icon">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={focused === 'email' ? '#2563eb' : '#94a3b8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                    <polyline points="22,6 12,13 2,6" />
-                  </svg>
-                </span>
-                <input
-                  id="login-email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  onFocus={() => setFocused('email')}
-                  onBlur={() => setFocused('')}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-                  placeholder="votre@email.com"
-                  className="login-input"
-                  style={error && !formData.email ? { borderColor: '#ef4444' } : {}}
-                  autoComplete="email"
-                />
+            {(mode === 'login' || mode === 'register' || mode === 'forgot') && (
+              <div className="login-field">
+                <label className="login-label" htmlFor="login-email">Adresse e-mail</label>
+                <div className="login-input-wrap">
+                  <span className="login-input-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={focused === 'email' ? '#2563eb' : '#94a3b8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                      <polyline points="22,6 12,13 2,6" />
+                    </svg>
+                  </span>
+                  <input
+                    id="login-email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    onFocus={() => setFocused('email')}
+                    onBlur={() => setFocused('')}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+                    placeholder="votre@email.com"
+                    className="login-input"
+                    style={error && !formData.email ? { borderColor: '#ef4444' } : {}}
+                    autoComplete="email"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="login-field">
-              <label className="login-label" htmlFor="login-password">Mot de passe</label>
-              <div className="login-input-wrap">
-                <span className="login-input-icon">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={focused === 'password' ? '#2563eb' : '#94a3b8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                  </svg>
-                </span>
-                <input
-                  id="login-password"
-                  name="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  onFocus={() => setFocused('password')}
-                  onBlur={() => setFocused('')}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-                  placeholder="••••••••"
-                  className="login-input"
-                  style={error && !formData.password ? { borderColor: '#ef4444' } : {}}
-                />
+            {(mode === 'login' || mode === 'register' || mode === 'reset') && (
+              <div className="login-field">
+                <label className="login-label" htmlFor="login-password">
+                  {mode === 'reset' ? "Nouveau mot de passe" : "Mot de passe"}
+                </label>
+                <div className="login-input-wrap">
+                  <span className="login-input-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={focused === 'password' ? '#2563eb' : '#94a3b8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                  </span>
+                  <input
+                    id="login-password"
+                    name="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    onFocus={() => setFocused('password')}
+                    onBlur={() => setFocused('')}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+                    placeholder={mode === 'reset' ? "Nouveau mot de passe" : "••••••••"}
+                    className="login-input"
+                    style={error && !formData.password ? { borderColor: '#ef4444' } : {}}
+                  />
+                </div>
+                {mode === 'login' && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                    <span
+                      onClick={() => { setMode('forgot'); setError(''); setSuccessMessage(''); }}
+                      style={{ fontSize: '0.78rem', color: '#2563eb', cursor: 'pointer', fontWeight: 500 }}
+                    >
+                      Mot de passe oublié ?
+                    </span>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
 
-            {isRegister && (
-               <>
-                 <div className="login-field">
-                   <label className="login-label" htmlFor="login-fonction">Fonction</label>
-                   <div className="login-input-wrap">
-                     <span className="login-input-icon">
-                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                         <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-                       </svg>
-                     </span>
-                     <input
-                       id="login-fonction"
-                       name="fonction"
-                       value={formData.fonction}
-                       onChange={handleChange}
-                       placeholder="Développeur, Manager..."
-                       className="login-input"
-                     />
-                   </div>
-                 </div>
+            {mode === 'register' && (
+                <>
+                  <div className="login-field">
+                    <label className="login-label" htmlFor="login-fonction">Fonction</label>
+                    <div className="login-input-wrap">
+                      <span className="login-input-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                        </svg>
+                      </span>
+                      <input
+                        id="login-fonction"
+                        name="fonction"
+                        value={formData.fonction}
+                        onChange={handleChange}
+                        placeholder="Développeur, Manager..."
+                        className="login-input"
+                      />
+                    </div>
+                  </div>
 
-                 <div className="login-field">
-                   <label className="login-label" htmlFor="login-cle_activation">Clé d'activation</label>
-                 <div className="login-input-wrap">
-                   <span className="login-input-icon">
-                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                       <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
-                     </svg>
-                   </span>
-                   <input
-                     id="login-cle_activation"
-                     name="cle_activation"
-                     value={formData.cle_activation}
-                     onChange={handleChange}
-                     placeholder="J-RSD-2026"
-                     className="login-input"
-                   />
-                 </div>
-                 </div>
-               </>
+                  <div className="login-field">
+                    <label className="login-label" htmlFor="login-cle_activation">Clé d'activation</label>
+                  <div className="login-input-wrap">
+                    <span className="login-input-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+                      </svg>
+                    </span>
+                    <input
+                      id="login-cle_activation"
+                      name="cle_activation"
+                      value={formData.cle_activation}
+                      onChange={handleChange}
+                      placeholder="J-RSD-2026"
+                      className="login-input"
+                    />
+                  </div>
+                  </div>
+                </>
+             )}
+
+            {successMessage && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                color: '#10b981', fontSize: '0.78rem', fontWeight: 500,
+                background: 'rgba(16,185,129,0.08)', padding: '10px 14px',
+                borderRadius: '8px', border: '1px solid rgba(16,185,129,0.2)'
+              }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+                {successMessage}
+              </div>
             )}
 
             {error && (
@@ -516,11 +588,11 @@ export default function Login() {
                     <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="3" />
                     <path d="M12 2a10 10 0 0 1 10 10" stroke="white" strokeWidth="3" strokeLinecap="round" />
                   </svg>
-                  {isRegister ? "Inscription en cours…" : "Connexion en cours…"}
+                  {mode === 'register' ? "Inscription en cours…" : mode === 'forgot' ? "Demande en cours…" : mode === 'reset' ? "Réinitialisation…" : "Connexion en cours…"}
                 </>
               ) : (
                 <>
-                  {isRegister ? "S'inscrire" : "Se connecter"}
+                  {mode === 'register' ? "S'inscrire" : mode === 'forgot' ? "Envoyer le lien" : mode === 'reset' ? "Enregistrer le mot de passe" : "Se connecter"}
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
@@ -528,44 +600,7 @@ export default function Login() {
               )}
             </button>
 
-            {!isRegister && (
-              <>
-                <div className="login-divider">
-                  <div className="login-divider-line" />
-                  <span className="login-divider-text">Pré-remplissage rapide</span>
-                  <div className="login-divider-line" />
-                </div>
 
-                <div className="login-profile-grid">
-                  {USERS.map((u) => (
-                    <button
-                      key={u.email}
-                      type="button"
-                      className="login-profile-card"
-                      onClick={() => handleQuick(u)}
-                    >
-                      <div className="login-avatar-wrap">
-                        <div style={{
-                          width: 36, height: 36, borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #1d4ed8, #3b82f6)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: 'white', fontWeight: 700, fontSize: '0.8rem', letterSpacing: '0.03em'
-                        }}>{u.initials}</div>
-                      </div>
-                      <div className="login-profile-info">
-                        <p className="login-profile-name">{u.name}</p>
-                        <span
-                          className="login-profile-badge"
-                          style={{ background: u.badgeColor + '22', color: u.badgeColor, border: `1px solid ${u.badgeColor}44` }}
-                        >
-                          {u.badge}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
 
           </div>
         </div>

@@ -90,6 +90,14 @@ export const api = {
     generateInvitation: () => fetchWithAuth('/auth/invitation', {
       method: 'POST',
     }),
+    forgotPassword: (email) => fetchWithAuth('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+    resetPassword: (token, password) => fetchWithAuth('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    }),
   },
   users: {
     getAll: () => fetchWithAuth('/users', {
@@ -100,6 +108,10 @@ export const api = {
       body: JSON.stringify({ role }),
     }),
     getManagers: () => fetchWithAuth('/users/managers', { method: 'GET' }),
+    uploadCv: (formData) => fetchWithAuthForm('/users/profile/cv', formData, 'POST'),
+    deleteCv: () => fetchWithAuth('/users/profile/cv', { method: 'DELETE' }),
+    getCvDownloadUrl: (userId) => `${API_BASE_URL}/users/${userId}/cv`,
+    updateProfile: (formData) => fetchWithAuthForm('/users/profile', formData, 'PUT'),
   },
   projects: {
     getAll: () => fetchWithAuth('/projects', { method: 'GET' }),
@@ -165,6 +177,11 @@ export const api = {
       body: JSON.stringify(data),
     }),
     markAsRead: (id) => fetchWithAuth(`/notifications/${id}/read`, { method: 'POST' }),
+    update: (id, data) => fetchWithAuth(`/notifications/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    delete: (id) => fetchWithAuth(`/notifications/${id}`, { method: 'DELETE' }),
   },
   planning: {
     getMySchedule: () => fetchWithAuth('/planning/my-schedule', { method: 'GET' }),

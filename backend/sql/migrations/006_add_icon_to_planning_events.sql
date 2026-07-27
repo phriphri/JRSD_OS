@@ -14,9 +14,8 @@ USE jrsd_os;
 
 -- Ajout du champ icon à la table planning_events
 ALTER TABLE planning_events 
-ADD COLUMN icon VARCHAR(50) DEFAULT NULL 
-AFTER description
-COMMENT 'Émoji ou icône pour l\'événement (ex: 💻, 🚀, 📢)';
+ADD COLUMN icon VARCHAR(50) DEFAULT NULL COMMENT 'Icone de l evenement'
+AFTER description;
 
 -- Enregistrement de la migration
 INSERT IGNORE INTO schema_migrations (version) VALUES ('006');

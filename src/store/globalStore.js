@@ -28,7 +28,7 @@ const mapApiUserToFrontend = (user) => {
     name: firstName,
     fullName: fullName,
     role: mappedRole,
-    avatar: user.avatar_url || null, // null par défaut, URL si l'utilisateur a uploadé une photo
+    avatar: user.avatar || user.avatar_url || null, // null par défaut, URL si l'utilisateur a uploadé une photo
     initials,                        // "PM" pour Phrasia Mosengo
   };
 };
@@ -60,6 +60,17 @@ export const useGlobalStore = create((set, get) => ({
   // Auth state: starts as Lucas Martin (Employé) for demo ease, or null. Let's start with u3 (Lucas Martin) by default
   // so the layout has a default state if not logged in, but let's make it fully customisable.
   currentUser: null, // Pas d'utilisateur connecté → affiche l'écran de login
+  setCurrentUser: (user) => set(state => ({
+    currentUser: typeof user === 'function' ? user(state.currentUser) : user
+  })),
+  refreshCurrentUser: async () => {
+    try {
+      const res = await api.auth.getMe();
+      set({ currentUser: mapApiUserToFrontend(res.user) });
+    } catch (err) {
+      console.error('[refreshCurrentUser]', err.message);
+    }
+  },
   
   darkMode: false,
   toggleTheme: () => set(state => {
@@ -140,6 +151,24 @@ export const useGlobalStore = create((set, get) => ({
       get().fetchPlanningEvents();
       get().fetchDocuments();
       return { success: true, user: frontendUser };
+    } catch (err) {
+      return { success: false, message: err.message };
+    }
+  },
+  
+  forgotPassword: async (email) => {
+    try {
+      const res = await api.auth.forgotPassword(email);
+      return { success: true, message: res.message };
+    } catch (err) {
+      return { success: false, message: err.message };
+    }
+  },
+  
+  resetPassword: async (token, password) => {
+    try {
+      const res = await api.auth.resetPassword(token, password);
+      return { success: true, message: res.message };
     } catch (err) {
       return { success: false, message: err.message };
     }
@@ -536,6 +565,34 @@ export const useGlobalStore = create((set, get) => ({
       }
     } catch (err) {
       console.error('Erreur markNotificationAsRead:', err);
+    }
+  },
+
+  updateNotification: async (notificationId, data) => {
+    try {
+      const res = await api.notifications.update(notificationId, data);
+      if (res.success) {
+        get().addLog(`Notification modifiée`);
+        get().fetchNotifications();
+        return { success: true };
+      }
+      return { success: false, message: res.message };
+    } catch (err) {
+      return { success: false, message: err.message };
+    }
+  },
+
+  deleteNotification: async (notificationId) => {
+    try {
+      const res = await api.notifications.delete(notificationId);
+      if (res.success) {
+        get().addLog(`Notification supprimée`);
+        get().fetchNotifications();
+        return { success: true };
+      }
+      return { success: false, message: res.message };
+    } catch (err) {
+      return { success: false, message: err.message };
     }
   },
 

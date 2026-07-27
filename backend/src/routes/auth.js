@@ -17,7 +17,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { protect, adminOnly } = require('../middleware/auth');
-const { register, login, getMe, generateInvitation } = require('../controllers/authController');
+const { register, login, getMe, generateInvitation, forgotPassword, resetPassword } = require('../controllers/authController');
 
 const router = express.Router();
 
@@ -84,6 +84,22 @@ const loginRules = [
     .withMessage('Le mot de passe est requis.'),
 ];
 
+const forgotPasswordRules = [
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Adresse email invalide.'),
+];
+
+const resetPasswordRules = [
+  body('token')
+    .notEmpty()
+    .withMessage('Le jeton de réinitialisation est requis.'),
+  body('password')
+    .isLength({ min: 3 })
+    .withMessage('Le mot de passe doit contenir au moins 3 caractères.'),
+];
+
 // ────────────────────────────────────────────────────────────
 //  Montage des routes
 // ────────────────────────────────────────────────────────────
@@ -99,5 +115,11 @@ router.get('/me', protect, getMe);
 
 /** POST /api/auth/invitation — génère une clé (Admin uniquement) */
 router.post('/invitation', protect, adminOnly, generateInvitation);
+
+/** POST /api/auth/forgot-password */
+router.post('/forgot-password', forgotPasswordRules, validateRequest, forgotPassword);
+
+/** POST /api/auth/reset-password */
+router.post('/reset-password', resetPasswordRules, validateRequest, resetPassword);
 
 module.exports = router;

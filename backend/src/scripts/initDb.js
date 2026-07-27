@@ -63,9 +63,9 @@ async function initDb() {
       await conn.query(cleanSql);
       console.log(`    ✅  Migration ${version} appliquée avec succès.\n`);
     } catch (err) {
-      // Ignorer les erreurs "table already exists" (idempotence)
-      if (err.code === 'ER_TABLE_EXISTS_ERROR') {
-        console.log(`    ℹ️   Migration ${version} déjà appliquée (table existante).\n`);
+      // Ignorer les erreurs "table already exists" ou "duplicate column" (idempotence)
+      if (err.code === 'ER_TABLE_EXISTS_ERROR' || err.code === 'ER_DUP_FIELDNAME') {
+        console.log(`    ℹ️   Migration ${version} déjà appliquée (structure existante).\n`);
       } else {
         console.error(`    ❌  Erreur lors de la migration ${version} :`, err.message);
         await conn.end();

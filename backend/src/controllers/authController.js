@@ -15,6 +15,9 @@
 const bcrypt = require('bcryptjs');
 const jwt    = require('jsonwebtoken');
 const dns    = require('dns').promises;
+const crypto = require('crypto');
+const fs     = require('fs');
+const path   = require('path');
 const { pool } = require('../config/db');
 
 /** Coût bcrypt — 10 rounds (directive sécurité du projet) */
@@ -180,7 +183,7 @@ async function login(req, res) {
   try {
     // ── Étape 1 : recherche par email (requête préparée) ─────
     const [rows] = await pool.execute(
-      `SELECT id, nom_prenom, email, password, fonction, role, statut
+      `SELECT id, nom_prenom, email, password, fonction, role, statut, avatar
        FROM users
        WHERE email = ?
        LIMIT 1`,
@@ -242,7 +245,7 @@ async function getMe(req, res) {
   try {
     // pool.execute() — requête préparée avec l'ID issu du token (pas du body)
     const [rows] = await pool.execute(
-      `SELECT id, nom_prenom, email, fonction, role, statut, created_at
+      `SELECT id, nom_prenom, email, fonction, role, statut, avatar, cv_url, created_at
        FROM users
        WHERE id = ?
        LIMIT 1`,
@@ -294,9 +297,138 @@ async function generateInvitation(req, res) {
   }
 }
 
+// Helper pour l'envoi d'emails de réinitialisation
+async function sendResetEmail(email, resetUrl) {
+  if (process.env.SMTP_HOST) {
+    try {
+      const nodemailer = require('nodemailer');
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT || '587', 10),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+      await transporter.sendMail({
+        from: `"${process.env.SMTP_FROM_NAME || 'J-RSD OS'}" <${process.env.SMTP_FROM_EMAIL || 'noreply@jrsd.local'}>`,
+        to: email,
+        subject: 'Réinitialisation de votre mot de passe - J-RSD OS',
+        text: `Vous avez demandé la réinitialisation de votre mot de passe.\n\nVeuillez cliquer sur le lien suivant pour définir un nouveau mot de passe :\n${resetUrl}\n\nCe lien expire dans 1 heure.`,
+        html: `<p>Vous avez demandé la réinitialisation de votre mot de passe.</p><p>Veuillez cliquer sur le lien suivant pour définir un nouveau mot de passe :</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>Ce lien expire dans 1 heure.</p>`,
+      });
+      console.log(`[SMTP] E-mail envoyé avec succès à ${email}`);
+      return;
+    } catch (err) {
+      console.error(`[SMTP Error] Impossible d'envoyer l'email via SMTP :`, err.message);
+    }
+  }
+
+  // Fallback de debug local
+  const logsDir = path.join(__dirname, '../../temp_mails');
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+  }
+  const mailContent = `To: ${email}\nSubject: Réinitialisation de votre mot de passe - J-RSD OS\nDate: ${new Date().toISOString()}\nReset URL: ${resetUrl}\n`;
+  const filename = path.join(logsDir, `${email.replace(/[^a-zA-Z0-9]/g, '_')}_reset.txt`);
+  fs.writeFileSync(filename, mailContent, 'utf-8');
+
+  console.log('\n============================================================');
+  console.log(`📡 [MAIL DEBUG] E-mail de réinitialisation simulé pour ${email}`);
+  console.log(`🔗 Lien : ${resetUrl}`);
+  console.log(`💾 Fichier de debug créé : ${filename}`);
+  console.log('============================================================\n');
+}
+
+/**
+ * forgotPassword
+ * POST /api/auth/forgot-password
+ */
+async function forgotPassword(req, res) {
+  const { email } = req.body;
+
+  try {
+    const [rows] = await pool.execute(
+      'SELECT id, nom_prenom FROM users WHERE email = ? LIMIT 1',
+      [email]
+    );
+
+    const message = 'Si cette adresse e-mail correspond à un compte, un lien de réinitialisation vous a été envoyé.';
+
+    if (rows.length === 0) {
+      return res.status(200).json({ success: true, message });
+    }
+
+    const user = rows[0];
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 3600000); // 1h
+
+    await pool.execute(
+      'UPDATE users SET reset_token = ?, reset_expires = ? WHERE id = ?',
+      [token, expires, user.id]
+    );
+
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
+    await sendResetEmail(email, resetUrl);
+
+    return res.status(200).json({ success: true, message });
+  } catch (err) {
+    console.error('[authController.forgotPassword]', err.message);
+    return res.status(500).json({ success: false, message: 'Erreur serveur interne.' });
+  }
+}
+
+/**
+ * resetPassword
+ * POST /api/auth/reset-password
+ */
+async function resetPassword(req, res) {
+  const { token, password } = req.body;
+
+  if (!token || !password || password.length < 3) {
+    return res.status(400).json({
+      success: false,
+      message: 'Token manquant ou mot de passe trop court (min. 3 caractères).',
+    });
+  }
+
+  try {
+    const [rows] = await pool.execute(
+      'SELECT id FROM users WHERE reset_token = ? AND reset_expires > NOW() LIMIT 1',
+      [token]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le jeton de réinitialisation est invalide ou a expiré.',
+      });
+    }
+
+    const user = rows[0];
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+
+    await pool.execute(
+      'UPDATE users SET password = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?',
+      [hashedPassword, user.id]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter.',
+    });
+  } catch (err) {
+    console.error('[authController.resetPassword]', err.message);
+    return res.status(500).json({ success: false, message: 'Erreur serveur interne.' });
+  }
+}
+
 module.exports = {
   register,
   login,
   getMe,
   generateInvitation,
+  forgotPassword,
+  resetPassword,
 };

@@ -24,22 +24,19 @@ router.get('/my-schedule', protect, async (req, res) => {
       return res.json({ success: true, events });
     }
 
-    // Pour Employé et Manager, on trouve l'équipe de l'utilisateur
-    const [teamMembers] = await pool.execute(
-      'SELECT team_id FROM team_members WHERE user_id = ?',
+    const [userRows] = await pool.execute(
+      'SELECT team_id FROM users WHERE id = ? LIMIT 1',
       [String(req.userId)]
     );
 
-    if (teamMembers.length > 0) {
-      const teamIds = teamMembers.map(tm => tm.team_id);
-      // Build placeholders dynamically for IN clause
-      const placeholders = teamIds.map(() => '?').join(',');
+    if (userRows.length > 0 && userRows[0].team_id) {
+      const teamId = userRows[0].team_id;
       const [events] = await pool.execute(
         `SELECT * FROM planning_events
          WHERE target_type = 'all'
-            OR (target_type = 'team' AND target_team_id IN (${placeholders}))
+            OR (target_type = 'team' AND target_team_id = ?)
          ORDER BY start_time ASC`,
-        teamIds.map(String)
+        [String(teamId)]
       );
       return res.json({ success: true, events });
     }

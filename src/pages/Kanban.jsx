@@ -155,6 +155,10 @@ export default function Kanban() {
                     role === 'manager' || 
                     Number(task.assigneeId) === Number(currentUser?.id)
                   );
+                  const getInitials = (name) => {
+                    if (!name) return '?';
+                    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                  };
 
                   return (
                     <div
@@ -162,7 +166,7 @@ export default function Kanban() {
                       draggable={isDraggable}
                       onDragStart={(e) => isDraggable && onDragStart(e, task.id)}
                       onDragEnd={onDragEnd}
-                      className={`group relative bg-white dark:bg-gray-800 border rounded-xl p-4 transition-all duration-200 ${
+                      className={`group relative bg-white dark:bg-gray-800 border rounded-lg p-3 transition-all duration-200 ${
                         isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed'
                       } ${
                         isDragging
@@ -170,42 +174,48 @@ export default function Kanban() {
                           : 'border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600'
                       } ${isUpdating ? 'opacity-60 pointer-events-none' : ''}`}
                     >
-                      <p className={`text-[10px] font-semibold uppercase tracking-wider mb-2 truncate ${
-                        task.projectName 
-                          ? 'text-indigo-600 dark:text-indigo-400' 
-                          : 'text-slate-500 dark:text-slate-400'
-                      }`}>
-                        {task.projectName || 'Hors Projet'}
-                      </p>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                          task.projectName 
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 border border-blue-100 dark:border-blue-800/40' 
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+                        }`}>
+                          {task.projectName || 'Hors Projet'}
+                        </span>
+                      </div>
 
-                      <h4 className="text-sm font-semibold text-gray-900 dark:text-white leading-tight mb-1.5">
+                      <h4 className="text-xs font-semibold text-gray-800 dark:text-white leading-snug line-clamp-2" title={task.title}>
                         {task.title}
                       </h4>
 
-                      {task.assigneeName && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                          Assigné à : {task.assigneeName}
-                        </p>
-                      )}
-
                       {task.description && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 line-clamp-1 mt-1">
                           {task.description}
                         </p>
                       )}
 
-                      <div className="flex flex-wrap items-center gap-2 mt-auto">
-                        {(task.deadline || task.dueDate) && (
-                          <span className={`text-[11px] font-medium ${
-                            overdue ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'
-                          }`}>
-                            {formatDeadline(task)}
-                          </span>
-                        )}
-                        {overdue && (
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 border border-red-500/20">
-                            En retard
-                          </span>
+                      <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-700/60">
+                        <div className="flex items-center gap-1.5">
+                          {(task.deadline || task.dueDate) && (
+                            <span className={`text-[10px] font-medium flex items-center gap-1 ${
+                              overdue ? 'text-red-500 font-semibold' : 'text-gray-400 dark:text-gray-500'
+                            }`}>
+                              🕒 {formatDeadline(task)}
+                            </span>
+                          )}
+                          {overdue && (
+                            <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.2 bg-red-500/10 text-red-500 border border-red-500/20 rounded">
+                              RETARD
+                            </span>
+                          )}
+                        </div>
+
+                        {task.assigneeName && (
+                          <div className="flex items-center" title={`Assigné à : ${task.assigneeName}`}>
+                            <div className="w-5 h-5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-800/30 text-indigo-600 dark:text-indigo-400 text-[9px] font-bold flex items-center justify-center shrink-0">
+                              {getInitials(task.assigneeName)}
+                            </div>
+                          </div>
                         )}
                       </div>
 

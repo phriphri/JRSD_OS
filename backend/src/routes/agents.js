@@ -113,6 +113,8 @@ router.get('/users', protect, adminOnly, async (_req, res) => {
         u.role,
         u.statut,
         u.team_id,
+        u.cv_url,
+        u.avatar,
         t.nom AS team_nom
       FROM users u
       LEFT JOIN teams t ON t.id = u.team_id
@@ -193,6 +195,8 @@ router.get('/users', protect, adminOnly, async (_req, res) => {
         fonction: u.fonction,
         role: u.role,
         statut: u.statut,
+        cv_url: u.cv_url || null,
+        avatar_url: u.avatar || null,
         team: u.team_id ? { id: u.team_id, nom: u.team_nom } : null,
         activeProjects,
       };

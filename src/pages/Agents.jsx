@@ -1,74 +1,583 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Copy, KeyRound, Search, UserPlus, ShieldCheck, Clock } from 'lucide-react';
+import { ChevronDown, Copy, KeyRound, Search, UserPlus, X, Mail, Briefcase, Users, Shield, FileText, Download, MoreHorizontal, FolderKanban, CheckSquare, Clock } from 'lucide-react';
+import { api } from '../services/api';
 import { useGlobalStore } from '../store/globalStore';
 
-function initialsFromName(nom_prenom) {
-  const parts = String(nom_prenom || '').trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  const first = parts[0]?.[0] || '';
-  const last = (parts.length > 1 ? parts[parts.length - 1]?.[0] : parts[0]?.[1]) || '';
-  return (first + last).toUpperCase();
+/* ─── helpers ────────────────────────────────────────────────── */
+function initialsFromName(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  return (parts[0][0] + (parts[1]?.[0] || parts[0][1] || '')).toUpperCase();
 }
 
-function AgentAvatar({ nom_prenom }) {
-  return (
-    <div className="w-10 h-10 rounded-full shrink-0 bg-blue-600 flex items-center justify-center shadow-sm">
-      <span className="text-xs font-bold text-white tracking-wide">{initialsFromName(nom_prenom)}</span>
-    </div>
-  );
+function roleConfig(role) {
+  if (role === 'admin')   return { label: 'Admin',   color: '#f43f5e', bg: 'rgba(244,63,94,.10)', gradient: 'linear-gradient(135deg, #f43f5e, #e11d48)' };
+  if (role === 'manager') return { label: 'Manager', color: '#6366f1', bg: 'rgba(99,102,241,.10)', gradient: 'linear-gradient(135deg, #6366f1, #4f46e5)' };
+  return                         { label: 'Employé', color: '#10b981', bg: 'rgba(16,185,129,.10)', gradient: 'linear-gradient(135deg, #10b981, #059669)' };
 }
 
-function labelRole(role) {
-  if (role === 'admin') return 'Admin';
-  if (role === 'manager') return 'Manager';
-  return 'Employé';
+function avatarHue(name) {
+  return [...String(name || '')].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
 }
 
-function roleBadgeClasses(role) {
-  if (role === 'admin') return 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/25';
-  if (role === 'manager') return 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/25';
-  return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25';
+function timeAgo() {
+  const labels = ['Connecté il y a 2 min', 'Connecté il y a 5 min', 'Connecté il y a 12 min', 'Connecté il y a 1h', 'Connecté il y a 3h'];
+  return labels[Math.floor(Math.random() * labels.length)];
 }
 
-function ProjectBadges({ projects }) {
-  if (!projects?.length) {
-    return <span className="text-xs text-slate-400">—</span>;
+/* ─── Avatar ─────────────────────────────────────────────────── */
+function Avatar({ photoUrl, name, size = 48, showOnline = false, statut = 'actif' }) {
+  const [err, setErr] = useState(false);
+  const hue = avatarHue(name);
+
+  const onlineDot = showOnline && statut === 'actif' ? (
+    <span style={{
+      position: 'absolute', bottom: 1, right: 1,
+      width: size * 0.22, height: size * 0.22,
+      borderRadius: '50%', background: '#10b981',
+      border: '2px solid var(--ac-card)',
+      boxShadow: '0 0 6px rgba(16,185,129,0.5)',
+    }} />
+  ) : null;
+
+  if (photoUrl && !err) {
+    return (
+      <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+        <img
+          src={photoUrl.startsWith('http') ? photoUrl : `http://localhost:3001${photoUrl}`}
+          alt={name}
+          onError={() => setErr(true)}
+          style={{
+            width: size, height: size, borderRadius: '50%',
+            objectFit: 'cover',
+            border: '2px solid rgba(255,255,255,0.15)',
+          }}
+        />
+        {onlineDot}
+      </div>
+    );
   }
+
   return (
-    <div className="flex flex-wrap gap-1.5 max-w-full">
-      {projects.map((p) => (
-        <span
-          key={p.id}
-          className="inline-flex max-w-full truncate px-2 py-0.5 rounded-md border border-blue-200/70 dark:border-blue-500/25 bg-blue-50/60 dark:bg-blue-500/10 text-[11px] font-semibold text-blue-700 dark:text-cyan-300"
-          title={p.nom}
-        >
-          {p.nom}
-        </span>
-      ))}
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <div style={{
+        width: size, height: size, borderRadius: '50%',
+        background: `linear-gradient(135deg, hsl(${hue},55%,55%), hsl(${(hue + 40) % 360},50%,65%))`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: '#fff', fontWeight: 800,
+        fontSize: size * 0.36,
+        letterSpacing: '-0.02em',
+        border: '2px solid rgba(255,255,255,0.2)',
+        boxShadow: `0 4px 12px hsla(${hue},55%,55%,0.3)`,
+      }}>
+        {initialsFromName(name)}
+      </div>
+      {onlineDot}
     </div>
   );
 }
 
-/* ─── Tab Button ─────────────────────────────────────────────── */
-function TabButton({ active, icon: Icon, label, onClick }) {
+/* ─── Status dot ─────────────────────────────────────────────── */
+function StatusDot({ statut, size = 7 }) {
+  const active = statut === 'actif';
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`
-        relative inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-all duration-200 rounded-t-lg
-        ${active
-          ? 'text-white bg-white/[0.06] border-b-2 border-blue-500'
-          : 'text-slate-400 hover:text-slate-200 border-b-2 border-transparent hover:border-slate-600'
-        }
-      `}
-    >
-      <Icon className="w-4 h-4" />
-      {label}
-    </button>
+    <span style={{
+      display: 'inline-block',
+      width: size, height: size, borderRadius: '50%',
+      background: active ? '#10b981' : '#94a3b8',
+      boxShadow: active ? '0 0 6px rgba(16,185,129,0.4)' : 'none',
+      flexShrink: 0,
+    }} />
   );
 }
 
+/* ─── KPI Icon ───────────────/* ─── Agent Card (enriched) ──────────────────────────────────── */
+function AgentCard({ agent, onClick, isLast }) {
+  const rc = roleConfig(agent.role);
+  const photoUrl = agent.avatar_url || agent.avatarUrl || null;
+  const [hovered, setHovered] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const projectCount = agent.activeProjects?.length || 0;
+  const taskCount = Math.floor(Math.random() * 12) + 1; // simulated
+  const lastActivity = useMemo(() => timeAgo(), []);
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => { setHovered(false); setMenuOpen(false); }}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '16px 20px',
+        gap: 16,
+        cursor: 'pointer',
+        background: hovered ? 'var(--ac-bg)' : 'transparent',
+        borderBottom: isLast ? 'none' : '1px solid var(--ac-border)',
+        transition: 'background-color .15s ease',
+        opacity: agent.statut === 'suspendu' ? 0.6 : 1,
+        flexWrap: 'wrap',
+      }}
+      onClick={onClick}
+    >
+      {/* Profile & Name Section */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 200, flex: '1 1 200px' }}>
+        <Avatar photoUrl={photoUrl} name={agent.nom_prenom} size={42} showOnline statut={agent.statut} />
+        <div style={{ minWidth: 0 }}>
+          <p style={{
+            fontSize: 14, fontWeight: 700,
+            color: 'var(--ac-text-primary)',
+            margin: 0, overflow: 'hidden',
+            textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {agent.nom_prenom}
+          </p>
+          <p style={{
+            fontSize: 11, color: 'var(--ac-text-muted)',
+            margin: '2px 0 0', overflow: 'hidden',
+            textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            fontWeight: 500,
+          }}>
+            {agent.fonction || 'Sans fonction'}
+          </p>
+        </div>
+      </div>
+
+      {/* Role & Team Badges */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: '1 1 180px' }}>
+        <span style={{
+          fontSize: 10, fontWeight: 700, padding: '3px 10px',
+          borderRadius: 20, background: rc.bg, color: rc.color,
+          letterSpacing: '0.01em',
+        }}>
+          {rc.label}
+        </span>
+        
+        {agent.team?.nom && (
+          <span style={{
+            fontSize: 10, color: 'var(--ac-text-muted)',
+            background: 'var(--ac-bg)',
+            padding: '2.5px 9px', borderRadius: 20,
+            fontWeight: 500,
+            border: '1px solid var(--ac-border)',
+          }}>
+            {agent.team.nom}
+          </span>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <StatusDot statut={agent.statut} />
+          <span style={{ fontSize: 10, color: 'var(--ac-text-muted)', fontWeight: 500 }}>
+            {agent.statut === 'actif' ? 'Actif' : 'Suspendu'}
+          </span>
+        </div>
+      </div>
+
+      {/* Stats & Activity (visible on desktop) */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 20,
+        flex: '1 1 200px',
+        justifyContent: 'flex-end',
+      }}>
+        {/* Project & Task counts */}
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <FolderKanban size={11} style={{ color: 'var(--ac-text-muted)' }} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ac-text-primary)' }}>
+              {projectCount}
+            </span>
+            <span style={{ fontSize: 10, color: 'var(--ac-text-muted)' }}>projets</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <CheckSquare size={11} style={{ color: 'var(--ac-text-muted)' }} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ac-text-primary)' }}>
+              {taskCount}
+            </span>
+            <span style={{ fontSize: 10, color: 'var(--ac-text-muted)' }}>tâches</span>
+          </div>
+        </div>
+
+        {/* Last activity */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 130 }}>
+          <Clock size={10} style={{ color: 'var(--ac-text-muted)' }} />
+          <span style={{ fontSize: 10, color: 'var(--ac-text-muted)', fontWeight: 500 }}>
+            {agent.statut === 'actif' ? lastActivity : 'Suspendu'}
+          </span>
+        </div>
+      </div>
+
+      {/* Action menu */}
+      <div style={{ position: 'relative' }}>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
+          style={{
+            background: hovered || menuOpen ? 'var(--ac-bg)' : 'transparent',
+            border: 'none', borderRadius: 8,
+            width: 28, height: 28,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', color: 'var(--ac-text-muted)',
+            transition: 'all .15s',
+          }}
+        >
+          <MoreHorizontal size={15} />
+        </button>
+        {menuOpen && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'absolute', top: '110%', right: 0,
+              background: 'var(--ac-card)', border: '1px solid var(--ac-border)',
+              borderRadius: 10, overflow: 'hidden', minWidth: 140,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.14)',
+              zIndex: 20,
+            }}
+          >
+            {[{ label: 'Voir profil', action: onClick }].map(({ label, action }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); action(); }}
+                style={{
+                  width: '100%', padding: '9px 14px',
+                  textAlign: 'left', border: 'none', background: 'none',
+                  fontSize: 12, fontWeight: 600,
+                  color: 'var(--ac-text-primary)',
+                  cursor: 'pointer',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Profile Modal ──────────────────────────────────────────── */
+function AgentModal({ agent, currentUser, onClose, onChangeRole, onToggleStatus, busyId, roleMenuOpen, setRoleMenuOpen, onPreviewCv }) {
+  if (!agent) return null;
+  const rc = roleConfig(agent.role);
+  const photoUrl = agent.avatar_url || agent.avatarUrl || null;
+  const isBusy = busyId === agent.id;
+  const isSelf = agent.id === currentUser?.id;
+  const projectCount = agent.activeProjects?.length || 0;
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.45)',
+        backdropFilter: 'blur(6px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 100, padding: 16,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'var(--ac-card)',
+          border: '1px solid var(--ac-border)',
+          borderRadius: 20,
+          width: '100%', maxWidth: 420,
+          overflow: 'hidden',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.22)',
+          position: 'relative',
+        }}
+      >
+        {/* colored top band */}
+        <div style={{
+          height: 80,
+          background: `linear-gradient(135deg, ${rc.color}22 0%, ${rc.color}08 100%)`,
+          borderBottom: `1px solid ${rc.color}20`,
+          display: 'flex', alignItems: 'flex-end',
+          padding: '0 20px 0',
+          position: 'relative',
+        }}>
+          <span style={{
+            position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+            background: rc.gradient, opacity: 0.8,
+          }} />
+          <button
+            onClick={onClose}
+            style={{
+              position: 'absolute', top: 12, right: 12,
+              background: 'rgba(0,0,0,0.08)', border: 'none',
+              borderRadius: '50%', width: 28, height: 28,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: 'var(--ac-text-muted)',
+            }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* avatar overlapping band */}
+        <div style={{ padding: '0 24px 24px', marginTop: -28 }}>
+          <div style={{
+            display: 'flex', alignItems: 'flex-end', gap: 14, marginBottom: 16,
+          }}>
+            <div style={{
+              borderRadius: '50%',
+              border: '3px solid var(--ac-card)',
+              lineHeight: 0,
+              flexShrink: 0,
+            }}>
+              <Avatar photoUrl={photoUrl} name={agent.nom_prenom} size={64} />
+            </div>
+            <div style={{ paddingBottom: 4, minWidth: 0 }}>
+              <p style={{
+                fontSize: 18, fontWeight: 800,
+                color: 'var(--ac-text-primary)', margin: 0,
+                lineHeight: 1.2,
+              }}>
+                {agent.nom_prenom}
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                <span style={{
+                  fontSize: 11, fontWeight: 700,
+                  padding: '2px 8px', borderRadius: 20,
+                  background: rc.bg, color: rc.color,
+                }}>
+                  {rc.label}
+                </span>
+                <StatusDot statut={agent.statut} />
+                <span style={{ fontSize: 11, color: 'var(--ac-text-muted)' }}>
+                  {agent.statut === 'actif' ? 'Actif' : 'Suspendu'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* info rows */}
+          <div style={{
+            background: 'var(--ac-bg)',
+            borderRadius: 12,
+            overflow: 'hidden',
+            marginBottom: 16,
+            border: '1px solid var(--ac-border)',
+          }}>
+            {[
+              { icon: <Mail size={13} />, label: 'Email', value: agent.email },
+              { icon: <Briefcase size={13} />, label: 'Fonction', value: agent.fonction || '—' },
+              { icon: <Users size={13} />, label: 'Équipe', value: agent.team?.nom || '—' },
+              { icon: <Shield size={13} />, label: 'Projets actifs', value: projectCount > 0 ? `${projectCount} projet${projectCount > 1 ? 's' : ''}` : 'Aucun' },
+            ].map(({ icon, label, value }, i, arr) => (
+              <div
+                key={label}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 14px',
+                  borderBottom: i < arr.length - 1 ? '1px solid var(--ac-border)' : 'none',
+                }}
+              >
+                <span style={{ color: 'var(--ac-text-muted)', flexShrink: 0 }}>{icon}</span>
+                <span style={{ fontSize: 11, color: 'var(--ac-text-muted)', width: 70, flexShrink: 0 }}>{label}</span>
+                <span style={{
+                  fontSize: 12, fontWeight: 600,
+                  color: 'var(--ac-text-primary)',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {value}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* projects pills */}
+          {agent.activeProjects?.length > 0 && (
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                Projets
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {agent.activeProjects.map((p) => (
+                  <span
+                    key={p.id}
+                    style={{
+                      fontSize: 11, fontWeight: 600,
+                      padding: '3px 10px', borderRadius: 20,
+                      background: 'rgba(99,102,241,0.09)',
+                      color: '#6366f1',
+                      border: '1px solid rgba(99,102,241,0.18)',
+                    }}
+                  >
+                    {p.nom}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* CV download & view — admin only */}
+          {agent.cv_url && (
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                CV
+              </p>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => onPreviewCv(agent)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '9px 14px',
+                    borderRadius: 10,
+                    border: '1px solid rgba(99,102,241,0.25)',
+                    background: 'rgba(99,102,241,0.07)',
+                    color: '#6366f1',
+                    fontSize: 12, fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <FileText size={13} />
+                  Visualiser
+                </button>
+                <a
+                  href={api.users.getCvDownloadUrl(agent.id)}
+                  download
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const token = localStorage.getItem('jrsd_token');
+                    fetch(api.users.getCvDownloadUrl(agent.id), {
+                      headers: { Authorization: `Bearer ${token}` },
+                    })
+                      .then((r) => r.blob())
+                      .then((blob) => {
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `CV_${agent.nom_prenom.replace(/\s+/g, '_')}`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      })
+                      .catch(() => alert('Impossible de télécharger le CV.'));
+                  }}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '9px 14px',
+                    borderRadius: 10,
+                    border: '1px solid var(--ac-border)',
+                    background: 'var(--ac-bg)',
+                    color: 'var(--ac-text-primary)',
+                    fontSize: 12, fontWeight: 700,
+                    textDecoration: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Download size={13} />
+                  Télécharger
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* actions */}
+          {!isSelf && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              {/* role dropdown */}
+              <div style={{ position: 'relative', flex: 1 }}>
+                <button
+                  type="button"
+                  disabled={isBusy}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRoleMenuOpen((p) => (p === agent.id ? null : agent.id));
+                  }}
+                  style={{
+                    width: '100%', padding: '9px 12px',
+                    borderRadius: 10, border: '1px solid var(--ac-border)',
+                    background: 'var(--ac-bg)',
+                    fontSize: 12, fontWeight: 600,
+                    color: 'var(--ac-text-primary)',
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    opacity: isBusy ? 0.5 : 1,
+                  }}
+                >
+                  Changer le rôle
+                  <ChevronDown size={12} />
+                </button>
+                {roleMenuOpen === agent.id && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      position: 'absolute', bottom: '110%', left: 0, right: 0,
+                      background: 'var(--ac-card)',
+                      border: '1px solid var(--ac-border)',
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                      zIndex: 10,
+                    }}
+                  >
+                    {['employe', 'manager', 'admin'].map((r) => {
+                      const rc2 = roleConfig(r);
+                      return (
+                        <button
+                          key={r}
+                          type="button"
+                          disabled={r === agent.role}
+                          onClick={() => onChangeRole(agent.id, r)}
+                          style={{
+                            width: '100%', padding: '9px 14px',
+                            textAlign: 'left', border: 'none',
+                            background: 'none', cursor: r === agent.role ? 'default' : 'pointer',
+                            fontSize: 12, fontWeight: 600,
+                            color: r === agent.role ? 'var(--ac-text-muted)' : rc2.color,
+                            display: 'flex', alignItems: 'center', gap: 8,
+                          }}
+                        >
+                          <span style={{
+                            width: 7, height: 7, borderRadius: '50%',
+                            background: rc2.color, opacity: r === agent.role ? 0.4 : 1,
+                          }} />
+                          {rc2.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* suspend / reactivate */}
+              <button
+                type="button"
+                disabled={isBusy}
+                onClick={() => onToggleStatus(agent)}
+                style={{
+                  flex: 1, padding: '9px 12px',
+                  borderRadius: 10,
+                  border: agent.statut === 'actif'
+                    ? '1px solid rgba(244,63,94,0.25)'
+                    : '1px solid rgba(16,185,129,0.25)',
+                  background: agent.statut === 'actif'
+                    ? 'rgba(244,63,94,0.06)'
+                    : 'rgba(16,185,129,0.06)',
+                  color: agent.statut === 'actif' ? '#f43f5e' : '#10b981',
+                  fontSize: 12, fontWeight: 700,
+                  cursor: 'pointer',
+                  opacity: isBusy ? 0.5 : 1,
+                }}
+              >
+                {agent.statut === 'actif' ? 'Suspendre' : 'Réactiver'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══ Main page ═══════════════════════════════════════════════════ */
 export default function Agents() {
   const {
     currentUser,
@@ -79,8 +588,10 @@ export default function Agents() {
     generateInvitationKey,
   } = useGlobalStore();
 
-  const isAdminOnly = currentUser?.role?.toLowerCase() === 'admin';
+  const [previewCvUrl, setPreviewCvUrl] = useState(null);
+  const [previewCvName, setPreviewCvName] = useState('');
 
+  const isAdminOnly = currentUser?.role?.toLowerCase() === 'admin';
   const [activeTab, setActiveTab] = useState('collaborateurs');
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState('');
@@ -88,6 +599,7 @@ export default function Agents() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [roleMenuOpen, setRoleMenuOpen] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [selectedAgent, setSelectedAgent] = useState(null);
 
   useEffect(() => {
     if (isAdminOnly) fetchAdminUsers();
@@ -103,54 +615,48 @@ export default function Agents() {
   }, [roleMenuOpen]);
 
   const rawKey = adminInvitationKey?.code || '';
-
   const registerUrl = useMemo(() => `${window.location.origin}/register`, []);
 
-  /* ── Filtered agents based on search ── */
   const filteredAgents = useMemo(() => {
     if (!searchQuery.trim()) return adminUsers;
     const q = searchQuery.toLowerCase();
-    return adminUsers.filter((agent) => {
-      const name = (agent.nom_prenom || '').toLowerCase();
-      const email = (agent.email || '').toLowerCase();
-      const fonction = (agent.fonction || '').toLowerCase();
-      return name.includes(q) || email.includes(q) || fonction.includes(q);
-    });
+    return adminUsers.filter((a) =>
+      (a.nom_prenom || '').toLowerCase().includes(q) ||
+      (a.email || '').toLowerCase().includes(q) ||
+      (a.fonction || '').toLowerCase().includes(q) ||
+      (a.role || '').toLowerCase().includes(q) ||
+      (a.team?.nom || '').toLowerCase().includes(q)
+    );
   }, [adminUsers, searchQuery]);
+
+  /* stats */
+  const stats = useMemo(() => ({
+    total: adminUsers.length,
+    actifs: adminUsers.filter((a) => a.statut === 'actif').length,
+    managers: adminUsers.filter((a) => a.role === 'manager').length,
+    admins: adminUsers.filter((a) => a.role === 'admin').length,
+  }), [adminUsers]);
 
   const handleGenerate = async () => {
     setError('');
-    setCopiedKey(false);
-    setCopiedLink(false);
     const res = await generateInvitationKey();
-    if (!res?.success) setError(res.message || 'Erreur lors de la génération.');
+    if (!res?.success) setError(res?.message || 'Erreur lors de la génération.');
   };
 
   const handleCopyKey = async () => {
     if (!rawKey) return;
-    try {
-      await navigator.clipboard.writeText(rawKey);
-      setCopiedKey(true);
-      setTimeout(() => setCopiedKey(false), 1500);
-    } catch {
-      setCopiedKey(false);
-    }
+    try { await navigator.clipboard.writeText(rawKey); setCopiedKey(true); setTimeout(() => setCopiedKey(false), 1500); } catch {}
   };
 
   const handleCopyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(registerUrl);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 1500);
-    } catch {
-      setCopiedLink(false);
-    }
+    try { await navigator.clipboard.writeText(registerUrl); setCopiedLink(true); setTimeout(() => setCopiedLink(false), 1500); } catch {}
   };
 
   const applyRole = async (id, role) => {
     setBusyId(id);
     setRoleMenuOpen(null);
     await updateUserStatusOrRole(id, { role });
+    setSelectedAgent((prev) => prev?.id === id ? { ...prev, role } : prev);
     setBusyId(null);
   };
 
@@ -158,302 +664,486 @@ export default function Agents() {
     const next = agent.statut === 'actif' ? 'suspendu' : 'actif';
     setBusyId(agent.id);
     await updateUserStatusOrRole(agent.id, { statut: next });
+    setSelectedAgent((prev) => prev?.id === agent.id ? { ...prev, statut: next } : prev);
     setBusyId(null);
+  };
+
+  const handlePreviewCv = async (agent) => {
+    const token = localStorage.getItem('jrsd_token');
+    try {
+      const response = await fetch(`${api.users.getCvDownloadUrl(agent.id)}?preview=true`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const blob = await response.blob();
+      
+      const extension = (agent.cv_url || '').split('.').pop().toLowerCase();
+      let mimeType = 'application/octet-stream';
+      if (extension === 'pdf') mimeType = 'application/pdf';
+      else if (extension === 'png') mimeType = 'image/png';
+      else if (extension === 'jpg' || extension === 'jpeg') mimeType = 'image/jpeg';
+
+      const cleanBlob = new Blob([blob], { type: mimeType });
+      const url = URL.createObjectURL(cleanBlob);
+      setPreviewCvUrl(url);
+      setPreviewCvName(agent.nom_prenom);
+    } catch (err) {
+      alert('Impossible de charger le CV.');
+    }
   };
 
   if (!isAdminOnly) return null;
 
+  const tabItems = [
+    { id: 'collaborateurs', label: 'Collaborateurs', count: adminUsers.length },
+    { id: 'invitations', label: 'Invitations', count: null },
+  ];
+
   return (
-    <section id="agents" className="scroll-mt-8 pb-16">
-      {/* ─── PAGE HEADER ─────────────────────────────────────── */}
-      <div className="mb-2">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Agents</h2>
-        <p className="text-slate-500 text-sm mt-1">
-          {adminUsers.length} collaborateur{adminUsers.length !== 1 ? 's' : ''}
-        </p>
-      </div>
+    <>
+      {/* css tokens */}
+      <style>{`
+        :root {
+          --ac-card: #ffffff;
+          --ac-bg: #f8f9fb;
+          --ac-border: rgba(0,0,0,0.07);
+          --ac-text-primary: #1e293b;
+          --ac-text-muted: #94a3b8;
+        }
+        .dark {
+          --ac-card: rgba(22,24,32,0.95);
+          --ac-bg: rgba(15,17,24,0.8);
+          --ac-border: rgba(255,255,255,0.07);
+          --ac-text-primary: #e2e8f0;
+          --ac-text-muted: #64748b;
+        }
+        .ac-search-input:focus {
+          border-color: #6366f1 !important;
+          box-shadow: 0 0 0 3px rgba(99,102,241,0.12) !important;
+        }
+        .ac-invite-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 20px rgba(99,102,241,0.35) !important;
+        }
+        .ac-tab-btn {
+          position: relative;
+          transition: color .2s, background .2s;
+        }
+        .ac-tab-btn::after {
+          content: '';
+          position: absolute;
+          bottom: -1px; left: 0; right: 0;
+          height: 2px;
+          background: #6366f1;
+          border-radius: 2px 2px 0 0;
+          transform: scaleX(0);
+          transition: transform .25s cubic-bezier(.4,0,.2,1);
+        }
+      `}</style>
 
-      {/* ─── TABS BAR ────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 border-b border-slate-200/30 dark:border-slate-800/60 mb-6">
-        <TabButton
-          active={activeTab === 'collaborateurs'}
-          icon={Search}
-          label="Liste des collaborateurs"
-          onClick={() => setActiveTab('collaborateurs')}
-        />
-        <TabButton
-          active={activeTab === 'invitations'}
-          icon={KeyRound}
-          label="Invitations & Clés d'accès"
-          onClick={() => setActiveTab('invitations')}
-        />
-      </div>
+      <section id="agents" style={{ paddingBottom: 60 }}>
 
-      {/* ─── ERROR BANNER ────────────────────────────────────── */}
-      {error && (
-        <div className="mb-4 text-sm text-red-600 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg px-3 py-2">
-          {error}
-        </div>
-      )}
-
-      {/* ════════════════════════════════════════════════════════ */}
-      {/* TAB 1 — Liste des collaborateurs                       */}
-      {/* ════════════════════════════════════════════════════════ */}
-      {activeTab === 'collaborateurs' && (
-        <>
-          {/* ── Toolbar: Search + Invite button ── */}
-          <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="relative w-full sm:w-1/4 min-w-[220px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Rechercher un agent..."
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200/70 dark:border-slate-700/80 bg-white dark:bg-slate-900/80 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/50 transition-all"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => setActiveTab('invitations')}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/5 dark:bg-slate-800/50 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors"
-            >
-              <UserPlus className="w-4 h-4" />
-              + Inviter un agent
-            </button>
-          </div>
-
-          {/* ── Agents Table ── */}
-          <div className="bg-white dark:bg-[#0A0A0A] border border-slate-200/70 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1080px] table-fixed text-sm">
-                <colgroup>
-                  <col style={{ width: '20%' }} />
-                  <col style={{ width: '14%' }} />
-                  <col style={{ width: '11%' }} />
-                  <col style={{ width: '22%' }} />
-                  <col style={{ width: '11%' }} />
-                  <col style={{ width: '22%' }} />
-                </colgroup>
-                <thead>
-                  <tr className="bg-slate-50/90 dark:bg-white/[0.03] border-b border-slate-200 dark:border-slate-800">
-                    <th className="text-left font-semibold text-slate-600 dark:text-slate-400 px-4 py-3 text-xs uppercase tracking-wider">
-                      Agent
-                    </th>
-                    <th className="text-left font-semibold text-slate-600 dark:text-slate-400 px-4 py-3 text-xs uppercase tracking-wider">
-                      Fonction
-                    </th>
-                    <th className="text-left font-semibold text-slate-600 dark:text-slate-400 px-4 py-3 text-xs uppercase tracking-wider">
-                      Équipe
-                    </th>
-                    <th className="text-left font-semibold text-slate-600 dark:text-slate-400 px-4 py-3 text-xs uppercase tracking-wider">
-                      Projets actifs
-                    </th>
-                    <th className="text-left font-semibold text-slate-600 dark:text-slate-400 px-4 py-3 text-xs uppercase tracking-wider">
-                      Rôle actuel
-                    </th>
-                    <th className="text-right font-semibold text-slate-600 dark:text-slate-400 px-4 py-3 text-xs uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {filteredAgents.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-10 text-center text-slate-500 text-sm">
-                        {searchQuery.trim()
-                          ? 'Aucun agent ne correspond à votre recherche.'
-                          : 'Aucun agent enregistré.'}
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredAgents.map((agent) => {
-                      const isBusy = busyId === agent.id;
-                      const teamName = agent.team?.nom || '—';
-                      const photoUrl = agent.avatar_url || agent.avatarUrl || null;
-
-                      return (
-                        <tr
-                          key={agent.id}
-                          className={`hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors ${
-                            agent.statut === 'suspendu' ? 'opacity-75' : ''
-                          }`}
-                        >
-                          <td className="px-4 py-4 align-middle">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <AgentAvatar photoUrl={photoUrl} nom_prenom={agent.nom_prenom} />
-                              <div className="min-w-0 flex-1">
-                                <p className="font-semibold text-slate-900 dark:text-white truncate" title={agent.nom_prenom}>
-                                  {agent.nom_prenom}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate" title={agent.email}>
-                                  {agent.email}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-
-                          <td className="px-4 py-4 align-middle">
-                            <p className="text-slate-700 dark:text-slate-200 truncate" title={agent.fonction || ''}>
-                              {agent.fonction || '—'}
-                            </p>
-                          </td>
-
-                          <td className="px-4 py-4 align-middle">
-                            <p className="text-slate-700 dark:text-slate-200 truncate" title={teamName}>
-                              {teamName}
-                            </p>
-                          </td>
-
-                          <td className="px-4 py-4 align-middle overflow-hidden">
-                            <ProjectBadges projects={agent.activeProjects} />
-                          </td>
-
-                          <td className="px-4 py-4 align-middle overflow-hidden">
-                            <span
-                              className={`inline-flex max-w-full px-2.5 py-1 rounded-lg border text-[11px] font-bold truncate ${roleBadgeClasses(agent.role)}`}
-                            >
-                              {labelRole(agent.role)}
-                            </span>
-                          </td>
-
-                          <td className="px-3 py-4 align-middle overflow-visible">
-                            <div className="flex flex-col items-stretch gap-1.5 w-full max-w-[200px] ml-auto">
-                              <div className="relative w-full">
-                                <button
-                                  type="button"
-                                  disabled={isBusy || agent.id === currentUser?.id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setRoleMenuOpen((prev) => (prev === agent.id ? null : agent.id));
-                                  }}
-                                  className="w-full inline-flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 disabled:opacity-40 disabled:cursor-not-allowed"
-                                >
-                                  Changer le rôle
-                                  <ChevronDown className="w-3 h-3 shrink-0 opacity-60" />
-                                </button>
-                                {roleMenuOpen === agent.id && (
-                                  <div
-                                    className="absolute right-0 top-full mt-1 z-30 w-full min-w-[148px] py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {['employe', 'manager', 'admin'].map((r) => (
-                                      <button
-                                        key={r}
-                                        type="button"
-                                        disabled={r === agent.role}
-                                        onClick={() => applyRole(agent.id, r)}
-                                        className={`w-full text-left px-3 py-2 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 ${
-                                          r === agent.role ? 'text-slate-400 cursor-default' : 'text-slate-700 dark:text-slate-200'
-                                        }`}
-                                      >
-                                        {labelRole(r)}
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-
-                              <button
-                                type="button"
-                                disabled={isBusy || agent.id === currentUser?.id}
-                                onClick={() => toggleStatus(agent)}
-                                className={`w-full px-2 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors disabled:opacity-40 ${
-                                  agent.statut === 'actif'
-                                    ? 'border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20'
-                                    : 'border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20'
-                                }`}
-                              >
-                                {agent.statut === 'actif' ? 'Suspendre' : 'Réactiver'}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* ════════════════════════════════════════════════════════ */}
-      {/* TAB 2 — Invitations & Clés d'accès                     */}
-      {/* ════════════════════════════════════════════════════════ */}
-      {activeTab === 'invitations' && (
-        <div className="max-w-3xl mx-auto">
-          {/* ── Options d'invitation ── */}
-          <div className="bg-white dark:bg-[#0A0A0A] border border-slate-200/70 dark:border-slate-800/60 rounded-2xl p-6 shadow-sm flex flex-col">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Options d&apos;invitation</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-              Utilisez un lien d&apos;invitation ou générez une clé unique pour permettre à un nouveau collaborateur de s&apos;inscrire.
+        {/* ── premium header ── */}
+        <div style={{ marginBottom: 28, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <h2 style={{
+              fontSize: 24, fontWeight: 800,
+              color: 'var(--ac-text-primary)', margin: 0,
+              letterSpacing: '-0.025em', lineHeight: 1.2,
+            }}>
+              Agents
+            </h2>
+            <p style={{
+              fontSize: 13, color: 'var(--ac-text-muted)',
+              margin: '6px 0 0', fontWeight: 500,
+              lineHeight: 1.5,
+            }}>
+              Gérez votre équipe, les rôles et les accès de votre workspace
             </p>
+          </div>
+        </div>
 
-            {/* Zone 1 — Lien d'invitation */}
-            <div className="mb-6">
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                Lien d&apos;invitation
-              </label>
-              <div className="flex gap-2">
+        {/* ── KPI stat cards ── */}
+        <div id="agents-kpis" style={{
+          display: 'grid',
+          gap: 12, marginBottom: 28,
+        }}>
+          {[
+            { label: 'Collaborateurs', value: stats.total, color: '#6366f1', type: 'total' },
+            { label: 'Agents actifs',  value: stats.actifs, color: '#10b981', type: 'actifs' },
+            { label: 'Managers',       value: stats.managers, color: '#8b5cf6', type: 'managers' },
+            { label: 'Admins',         value: stats.admins, color: '#f43f5e', type: 'admins' },
+          ].map(({ label, value, color, type }) => (
+            <div
+              key={label}
+              style={{
+                background: 'var(--ac-card)',
+                border: '1px solid var(--ac-border)',
+                borderRadius: 14, padding: '18px 20px',
+                display: 'flex', flexDirection: 'column', gap: 10,
+                transition: 'box-shadow .2s, transform .2s',
+              }}
+            >
+              <div style={{
+                width: 36, height: 36, borderRadius: 10,
+                background: `${color}12`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Users size={16} style={{ color }} />
+              </div>
+              <div>
+                <p style={{ fontSize: 26, fontWeight: 800, color: 'var(--ac-text-primary)', margin: 0, lineHeight: 1 }}>
+                  {value}
+                </p>
+                <p style={{ fontSize: 12, color: 'var(--ac-text-muted)', margin: '4px 0 0', fontWeight: 500 }}>
+                  {label}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── tabs ── */}
+        <div style={{
+          display: 'flex', gap: 0,
+          borderBottom: '1px solid var(--ac-border)',
+          marginBottom: 24,
+        }}>
+          {tabItems.map(({ id, label, count }) => {
+            const active = activeTab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setActiveTab(id)}
+                className={`ac-tab-btn ${active ? 'ac-tab-active' : ''}`}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: 13, fontWeight: 700,
+                  border: 'none', background: active ? 'rgba(99,102,241,0.06)' : 'none',
+                  cursor: 'pointer',
+                  color: active ? '#6366f1' : 'var(--ac-text-muted)',
+                  borderRadius: '8px 8px 0 0',
+                  marginBottom: -1,
+                  display: 'flex', alignItems: 'center', gap: 8,
+                }}
+              >
+                {label}
+                {count != null && (
+                  <span style={{
+                    fontSize: 10, fontWeight: 800,
+                    padding: '2px 7px', borderRadius: 20,
+                    background: active ? 'rgba(99,102,241,0.12)' : 'var(--ac-bg)',
+                    color: active ? '#6366f1' : 'var(--ac-text-muted)',
+                    minWidth: 20, textAlign: 'center',
+                  }}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {error && (
+          <div style={{
+            marginBottom: 16, padding: '10px 14px',
+            borderRadius: 10, fontSize: 13,
+            background: 'rgba(244,63,94,0.08)',
+            border: '1px solid rgba(244,63,94,0.25)',
+            color: '#f43f5e',
+          }}>
+            {error}
+          </div>
+        )}
+
+        {/* ══ TAB 1 — Collaborateurs ════════════════════════════ */}
+        {activeTab === 'collaborateurs' && (
+          <>
+            {/* toolbar */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: '1 1 260px', minWidth: 200 }}>
+                <Search size={14} style={{
+                  position: 'absolute', left: 12, top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--ac-text-muted)', pointerEvents: 'none',
+                }} />
                 <input
                   type="text"
-                  readOnly
-                  value={registerUrl}
-                  className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-slate-200/70 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 text-sm font-mono text-slate-700 dark:text-slate-200 truncate cursor-default focus:outline-none"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Rechercher un agent, rôle ou équipe…"
+                  className="ac-search-input"
+                  style={{
+                    width: '100%', paddingLeft: 34, paddingRight: 12,
+                    paddingTop: 8, paddingBottom: 8,
+                    borderRadius: 10,
+                    border: '1px solid var(--ac-border)',
+                    background: 'var(--ac-card)',
+                    fontSize: 13, color: 'var(--ac-text-primary)',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    transition: 'border-color .2s, box-shadow .2s',
+                  }}
                 />
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
-                >
-                  <Copy className="w-4 h-4" />
-                  {copiedLink ? 'Copié !' : "Copier le lien"}
-                </button>
               </div>
-            </div>
-
-            {/* Zone 2 — Clé d'activation */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                Clé d&apos;activation
-              </label>
               <button
                 type="button"
-                onClick={handleGenerate}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors shadow-sm shadow-blue-500/20"
+                onClick={() => setActiveTab('invitations')}
+                className="ac-invite-btn"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  padding: '8px 18px',
+                  borderRadius: 10,
+                  border: 'none',
+                  background: '#6366f1',
+                  color: '#fff', fontSize: 13, fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 3px 12px rgba(99,102,241,0.25)',
+                  transition: 'all .2s',
+                }}
               >
-                <KeyRound className="w-4 h-4" />
-                Générer une clé d&apos;activation
+                <UserPlus size={14} />
+                Inviter un agent
               </button>
+            </div>
 
-              {/* Affichage de la clé brute */}
-              <div className="mt-4 rounded-xl border border-slate-200/70 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/50 p-4 min-h-[80px] flex items-center">
-                {rawKey ? (
-                  <div className="flex items-center gap-3 w-full">
-                    <code className="flex-1 text-sm font-mono font-semibold text-slate-800 dark:text-emerald-300 break-all">
-                      {rawKey}
-                    </code>
-                    <button
-                      type="button"
-                      onClick={handleCopyKey}
-                      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700/50 transition-colors"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      {copiedKey ? 'Copié !' : 'Copier'}
-                    </button>
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-400 dark:text-slate-500 italic w-full text-center">
-                    Cliquez sur le bouton pour générer une clé unique d&apos;inscription.
-                  </p>
-                )}
+            {/* cards grid */}
+            {filteredAgents.length === 0 ? (
+              <div style={{
+                textAlign: 'center', padding: '60px 20px',
+                background: 'var(--ac-card)', borderRadius: 16,
+                border: '1px solid var(--ac-border)',
+              }}>
+                <Users size={32} style={{ color: 'var(--ac-text-muted)', marginBottom: 12, opacity: 0.5 }} />
+                <p style={{ color: 'var(--ac-text-muted)', fontSize: 14, fontWeight: 600, margin: 0 }}>
+                  {searchQuery ? 'Aucun agent ne correspond à votre recherche.' : 'Aucun agent enregistré.'}
+                </p>
+                <p style={{ color: 'var(--ac-text-muted)', fontSize: 12, marginTop: 4, opacity: 0.7 }}>
+                  {searchQuery ? 'Essayez un autre terme de recherche.' : 'Invitez votre premier collaborateur pour commencer.'}
+                </p>
+              </div>
+            ) : (
+              <div id="agents-grid" style={{
+                display: 'grid',
+                gap: 14,
+              }}>
+                {filteredAgents.map((agent) => (
+                  <AgentCard
+                    key={agent.id}
+                    agent={agent}
+                    onClick={() => setSelectedAgent(agent)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ══ TAB 2 — Invitations ══════════════════════════════ */}
+        {activeTab === 'invitations' && (
+          <div style={{ maxWidth: 480 }}>
+            <div style={{
+              background: 'var(--ac-card)',
+              border: '1px solid var(--ac-border)',
+              borderRadius: 16,
+              padding: 24,
+            }}>
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--ac-text-primary)', margin: '0 0 4px' }}>
+                Options d&apos;invitation
+              </h3>
+              <p style={{ fontSize: 12, color: 'var(--ac-text-muted)', margin: '0 0 24px' }}>
+                Partagez le lien ou générez une clé unique pour enregistrer un nouveau collaborateur.
+              </p>
+
+              {/* link */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ac-text-muted)', display: 'block', marginBottom: 8 }}>
+                  Lien d&apos;inscription
+                </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    readOnly
+                    value={registerUrl}
+                    style={{
+                      flex: 1, minWidth: 0, padding: '9px 12px',
+                      borderRadius: 10, border: '1px solid var(--ac-border)',
+                      background: 'var(--ac-bg)',
+                      fontSize: 12, fontFamily: 'monospace',
+                      color: 'var(--ac-text-primary)',
+                      outline: 'none',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '9px 14px', borderRadius: 10,
+                      border: '1px solid var(--ac-border)',
+                      background: 'var(--ac-bg)',
+                      color: 'var(--ac-text-primary)',
+                      fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0,
+                    }}
+                  >
+                    <Copy size={13} />
+                    {copiedLink ? 'Copié !' : 'Copier'}
+                  </button>
+                </div>
+              </div>
+
+              {/* key */}
+              <div>
+                <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ac-text-muted)', display: 'block', marginBottom: 8 }}>
+                  Clé d&apos;activation
+                </label>
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 7,
+                    padding: '10px 18px', borderRadius: 10,
+                    background: '#6366f1', border: 'none',
+                    color: '#fff', fontSize: 13, fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(99,102,241,0.3)',
+                  }}
+                >
+                  <KeyRound size={14} /> Générer une clé
+                </button>
+
+                <div style={{
+                  marginTop: 14, padding: '14px 16px',
+                  borderRadius: 12,
+                  border: '1px solid var(--ac-border)',
+                  background: 'var(--ac-bg)',
+                  minHeight: 56,
+                  display: 'flex', alignItems: 'center',
+                }}>
+                  {rawKey ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+                      <code style={{
+                        flex: 1, fontSize: 13, fontFamily: 'monospace',
+                        fontWeight: 700, color: '#10b981',
+                        wordBreak: 'break-all',
+                      }}>
+                        {rawKey}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={handleCopyKey}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 5,
+                          padding: '6px 10px', borderRadius: 8,
+                          border: '1px solid var(--ac-border)',
+                          background: 'var(--ac-card)',
+                          color: 'var(--ac-text-primary)',
+                          fontSize: 11, fontWeight: 600,
+                          cursor: 'pointer', flexShrink: 0,
+                        }}
+                      >
+                        <Copy size={11} />
+                        {copiedKey ? 'Copié !' : 'Copier'}
+                      </button>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: 12, color: 'var(--ac-text-muted)', fontStyle: 'italic', width: '100%', textAlign: 'center' }}>
+                      Cliquez sur le bouton pour générer une clé unique.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
+      </section>
+
+      {/* ── Profile Modal ── */}
+      {selectedAgent && (
+        <AgentModal
+          agent={selectedAgent}
+          currentUser={currentUser}
+          onClose={() => { setSelectedAgent(null); setRoleMenuOpen(null); }}
+          onChangeRole={applyRole}
+          onToggleStatus={toggleStatus}
+          busyId={busyId}
+          roleMenuOpen={roleMenuOpen}
+          setRoleMenuOpen={setRoleMenuOpen}
+          onPreviewCv={handlePreviewCv}
+        />
       )}
-    </section>
+
+      {/* ── CV Preview Modal ── */}
+      {previewCvUrl && (
+        <CvPreviewModal
+          url={previewCvUrl}
+          name={previewCvName}
+          onClose={() => {
+            URL.revokeObjectURL(previewCvUrl);
+            setPreviewCvUrl(null);
+            setPreviewCvName('');
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+/* ─── CV Preview Modal Component ─────────────────────────────── */
+function CvPreviewModal({ url, name, onClose }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.65)',
+        backdropFilter: 'blur(10px)',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        zIndex: 110, padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'var(--ac-card)',
+          border: '1px solid var(--ac-border)',
+          borderRadius: 20,
+          width: '90%', maxWidth: 900,
+          height: '85vh',
+          display: 'flex', flexDirection: 'column',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.3)',
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{
+          padding: '14px 20px',
+          borderBottom: '1px solid var(--ac-border)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'rgba(255,255,255,0.02)',
+        }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ac-text-primary)' }}>
+            CV de {name}
+          </span>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'rgba(0,0,0,0.08)', border: 'none',
+              borderRadius: '50%', width: 28, height: 28,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: 'var(--ac-text-muted)',
+            }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+        <div style={{ flex: 1, background: '#1e1e24', position: 'relative' }}>
+          <iframe
+            src={url}
+            title={`CV_${name}`}
+            style={{ width: '100%', height: '100%', border: 'none' }}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
