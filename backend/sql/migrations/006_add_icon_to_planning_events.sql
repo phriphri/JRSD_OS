@@ -10,8 +10,6 @@
 --    SOURCE backend/sql/migrations/006_add_icon_to_planning_events.sql;
 -- ============================================================
 
-USE jrsd_os;
-
 -- Ajout du champ icon à la table planning_events
 ALTER TABLE planning_events 
 ADD COLUMN icon VARCHAR(50) DEFAULT NULL COMMENT 'Icone de l evenement'

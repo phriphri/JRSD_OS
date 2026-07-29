@@ -18,3 +18,5 @@ CREATE TABLE IF NOT EXISTS notification_reads (
   FOREIGN KEY (notification_id) REFERENCES notifications(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO schema_migrations (version) VALUES ('002_notifications');

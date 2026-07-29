@@ -1,5 +1,3 @@
-USE jrsd_os;
-
 ALTER TABLE users
   MODIFY COLUMN role ENUM('admin', 'manager', 'employe') NOT NULL DEFAULT 'employe'
   COMMENT 'Rôle applicatif : admin | manager | employe';

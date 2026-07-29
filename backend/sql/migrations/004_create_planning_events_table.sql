@@ -4,8 +4,6 @@
 --  Description: Création de la table `planning_events`
 -- ============================================================
 
-USE jrsd_os;
-
 CREATE TABLE IF NOT EXISTS planning_events (
   id              INT UNSIGNED   NOT NULL AUTO_INCREMENT,
   title           VARCHAR(255)   NOT NULL,

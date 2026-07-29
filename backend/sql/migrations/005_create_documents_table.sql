@@ -10,8 +10,6 @@
 --    SOURCE backend/sql/migrations/005_create_documents_table.sql;
 -- ============================================================
 
-USE jrsd_os;
-
 -- Suppression de l'ancienne table documents (si elle existe)
 DROP TABLE IF EXISTS documents;
 

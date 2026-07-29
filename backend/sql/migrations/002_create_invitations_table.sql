@@ -5,8 +5,6 @@
 --  Description: Création de la table `workspace_invitations`
 -- ============================================================
 
-USE jrsd_os;
-
 CREATE TABLE IF NOT EXISTS workspace_invitations (
   id          INT UNSIGNED   NOT NULL AUTO_INCREMENT,
   code        VARCHAR(50)    NOT NULL UNIQUE COMMENT 'Code secret d\'invitation',

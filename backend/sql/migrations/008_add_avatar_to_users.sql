@@ -4,8 +4,6 @@
 --  Description: Ajout colonne avatar dans la table users
 -- ============================================================
 
-USE jrsd_os;
-
 ALTER TABLE users
   ADD COLUMN avatar VARCHAR(255) DEFAULT NULL COMMENT 'Chemin relatif vers l avatar de l utilisateur';
 

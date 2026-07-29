@@ -10,13 +10,6 @@
 --    SOURCE backend/sql/migrations/001_create_users_table.sql;
 -- ============================================================
 
--- Création de la base si absente
-CREATE DATABASE IF NOT EXISTS jrsd_os
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
-USE jrsd_os;
-
 -- Table de suivi des migrations (bonne pratique)
 CREATE TABLE IF NOT EXISTS schema_migrations (
   version     VARCHAR(20)  NOT NULL,

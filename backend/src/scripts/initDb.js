@@ -19,9 +19,10 @@ const fs    = require('fs');
 const path  = require('path');
 
 const MIGRATIONS_DIR = path.join(__dirname, '../../sql/migrations');
+const DB_NAME = process.env.DB_NAME || 'jrsd_os';
 
 async function initDb() {
-  // Connexion sans sélectionner de database (pour CREATE DATABASE)
+  // Connexion sans sélectionner de database (pour CREATE DATABASE si nécessaire)
   const conn = await mysql.createConnection({
     host              : process.env.DB_HOST     || 'localhost',
     port              : parseInt(process.env.DB_PORT || '3306', 10),
@@ -31,8 +32,16 @@ async function initDb() {
   });
 
   console.log('📡  Connexion MySQL établie.\n');
+  console.log(`📊  Base de données cible : ${DB_NAME}\n`);
 
-  // ── 1. Lister les fichiers de migration (ordre alphabétique) ─
+  // ── 1. Créer la base de données si elle n'existe pas ─────────────
+  await conn.query(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  console.log(`✅  Base de données ${DB_NAME} prête.\n`);
+
+  // ── 2. Sélectionner la base de données ─────────────────────────────
+  await conn.query(`USE \`${DB_NAME}\``);
+
+  // ── 3. Lister les fichiers de migration (ordre alphabétique) ─
   const migrationFiles = fs
     .readdirSync(MIGRATIONS_DIR)
     .filter(f => f.endsWith('.sql'))
