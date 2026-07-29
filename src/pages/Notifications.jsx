@@ -3,7 +3,11 @@ import { useGlobalStore } from '../store/globalStore';
 
 export default function Notifications() {
   const { notifications, currentUser, markNotificationAsRead, createNotification } = useGlobalStore();
-  
+
+  if (!currentUser) {
+    return <div className="p-8 text-center text-gray-500">Chargement...</div>;
+  }
+
   const userRole = currentUser?.role?.toLowerCase();
   const isAdmin = userRole === 'admin';
 

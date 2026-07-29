@@ -35,6 +35,11 @@ const FILE_ICONS = {
 
 export default function Documents() {
   const { documents, users, projects, teams, currentUser, fetchDocuments, uploadDocument, deleteDocument } = useGlobalStore();
+
+  if (!currentUser) {
+    return <div className="p-8 text-center text-gray-500">Chargement...</div>;
+  }
+
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [targetType, setTargetType] = useState('all');

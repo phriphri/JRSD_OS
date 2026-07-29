@@ -59,6 +59,10 @@ export default function Teams() {
     deleteTeam,
   } = useGlobalStore();
 
+  if (!currentUser) {
+    return <div className="p-8 text-center text-gray-500">Chargement...</div>;
+  }
+
   const isAdmin = currentUser?.role?.toLowerCase() === 'admin';
 
   const [modalOpen, setModalOpen] = useState(false);

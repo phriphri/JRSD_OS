@@ -34,7 +34,7 @@ const pool = mysql.createPool({
 
   // ── Pool settings ──────────────────────────────────────────
   waitForConnections : true,
-  connectionLimit    : 10,   // Max 10 connexions simultanées
+  connectionLimit    : 100,  // Max 100 connexions simultanées (augmenté pour éviter les limites)
   queueLimit         : 0,    // File illimitée (0 = pas de limite)
   idleTimeout        : 60000, // Fermer les connexions idle après 60s
   enableKeepAlive    : true,  // Maintient les connexions TCP actives

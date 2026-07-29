@@ -188,6 +188,11 @@ function EventModal({ isOpen, onClose, event = null, onSave }) {
 
 export default function Planning() {
   const { currentUser, planningEvents, teams, createPlanningEvent, updatePlanningEvent, deletePlanningEvent, fetchPlanningEvents } = useGlobalStore();
+
+  if (!currentUser) {
+    return <div className="p-8 text-center text-gray-500">Chargement...</div>;
+  }
+
   const isAdmin = currentUser?.role?.toLowerCase() === 'admin';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);

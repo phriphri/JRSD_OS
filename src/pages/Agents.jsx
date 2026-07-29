@@ -588,6 +588,10 @@ export default function Agents() {
     generateInvitationKey,
   } = useGlobalStore();
 
+  if (!currentUser) {
+    return <div className="p-8 text-center text-gray-500">Chargement...</div>;
+  }
+
   const [previewCvUrl, setPreviewCvUrl] = useState(null);
   const [previewCvName, setPreviewCvName] = useState('');
 

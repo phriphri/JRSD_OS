@@ -150,6 +150,10 @@ export default function Messages() {
     connectSocket,
   } = useGlobalStore();
 
+  if (!currentUser) {
+    return <div className="p-8 text-center text-gray-500">Chargement...</div>;
+  }
+
   const [inputText, setInputText] = useState('');
   const [newChatOpen, setNewChatOpen] = useState(false);
   const [mobileShowChat, setMobileShowChat] = useState(false);

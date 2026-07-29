@@ -8,3 +8,7 @@ build/
 backend/temp_mails/
 backend/uploads/cv/
 *.code-workspace
+
+backend/temp_mails/
+backend/uploads/cv/
+*.code-workspace

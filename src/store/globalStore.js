@@ -121,6 +121,8 @@ export const useGlobalStore = create((set, get) => ({
       const frontendUser = mapApiUserToFrontend(res.user);
       set({ currentUser: frontendUser });
       get().addLog(`Connexion réussie de ${frontendUser.name}`);
+      
+      // Charger les données en arrière-plan sans bloquer
       get().fetchUsers();
       get().fetchProjects();
       get().fetchMyTasks();
@@ -129,6 +131,7 @@ export const useGlobalStore = create((set, get) => ({
       get().fetchNotifications();
       get().fetchPlanningEvents();
       get().fetchDocuments();
+      
       return { success: true, user: frontendUser };
     } catch (err) {
       return { success: false, message: err.message };

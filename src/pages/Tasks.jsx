@@ -48,6 +48,10 @@ export default function Tasks() {
     createTask,
   } = useGlobalStore();
 
+  if (!currentUser) {
+    return <div className="p-8 text-center text-gray-500">Chargement...</div>;
+  }
+
   const role = currentUser?.role?.toLowerCase();
   const isAdmin = role === 'admin';
   const isManager = role === 'manager';
