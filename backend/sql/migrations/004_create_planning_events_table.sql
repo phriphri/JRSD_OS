@@ -15,8 +15,26 @@ CREATE TABLE IF NOT EXISTS planning_events (
   created_at      DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at      DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-  PRIMARY KEY (id),
-  CONSTRAINT fk_planning_team FOREIGN KEY (target_team_id) REFERENCES teams(id) ON DELETE CASCADE
+  PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Ajout de la contrainte de clé étrangère vers teams (idempotent)
+-- Vérifie d'abord si la contrainte existe
+SET @constraint_exists = (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+  WHERE CONSTRAINT_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'planning_events'
+    AND CONSTRAINT_NAME = 'fk_planning_team'
+);
+
+SET @sql = IF(@constraint_exists = 0,
+  'ALTER TABLE planning_events ADD CONSTRAINT fk_planning_team FOREIGN KEY (target_team_id) REFERENCES teams(id) ON DELETE CASCADE',
+  'SELECT ''Constraint already exists'' AS message'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 INSERT IGNORE INTO schema_migrations (version) VALUES ('004');

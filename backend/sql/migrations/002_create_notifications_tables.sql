@@ -1,4 +1,4 @@
--- 002_create_notifications_tables.sql
+-- 002b_create_notifications_tables.sql
 -- Création des tables pour le système de notifications (annonces officielles)
 
 CREATE TABLE IF NOT EXISTS notifications (
@@ -19,4 +19,4 @@ CREATE TABLE IF NOT EXISTS notification_reads (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT IGNORE INTO schema_migrations (version) VALUES ('002_notifications');
+INSERT IGNORE INTO schema_migrations (version) VALUES ('002b');
