@@ -67,16 +67,16 @@ function EventModal({ isOpen, onClose, event = null, onSave }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+      <div className="bg-white dark:bg-gray-900 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 flex flex-col">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-800 shrink-0">
+          <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
             {event ? "Modifier l'événement" : "Nouvel événement"}
           </h3>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4 flex-1">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Titre</label>
             <input
@@ -112,7 +112,7 @@ function EventModal({ isOpen, onClose, event = null, onSave }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date de début</label>
               <input required type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
@@ -123,7 +123,7 @@ function EventModal({ isOpen, onClose, event = null, onSave }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date de fin</label>
               <input required type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
@@ -172,7 +172,7 @@ function EventModal({ isOpen, onClose, event = null, onSave }) {
             />
           </div>
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-gray-200 dark:border-gray-800">
+          <div className="pt-4 flex flex-col sm:flex-row justify-end gap-3 border-t border-gray-200 dark:border-gray-800 shrink-0">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
               Annuler
             </button>

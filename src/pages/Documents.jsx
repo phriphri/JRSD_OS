@@ -241,11 +241,18 @@ export default function Documents() {
       )}
 
       {showUploadModal && (
-        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Téléverser un document</h3>
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto flex flex-col">
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-zinc-800 shrink-0">
+              <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white">Téléverser un document</h3>
+              <button onClick={() => setShowUploadModal(false)} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
             
-            <form onSubmit={handleUpload} className="space-y-4">
+            <form onSubmit={handleUpload} className="p-4 sm:p-6 space-y-4 flex-1">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fichier</label>
                 <input
@@ -315,7 +322,7 @@ export default function Documents() {
                 <p className="text-red-500 dark:text-red-400 text-sm">{error}</p>
               )}
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => {

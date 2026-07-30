@@ -126,7 +126,7 @@ export default function Kanban() {
               onDrop={(e) => onDrop(e, col.id)}
               onDragOver={(e) => onDragOver(e, col.id)}
               onDragLeave={(e) => onDragLeave(e, col.id)}
-              className={`flex flex-col min-w-[280px] max-w-[320px] flex-1 snap-start shrink-0 rounded-2xl transition-all duration-200 ${
+              className={`flex flex-col min-w-[260px] sm:min-w-[280px] max-w-[300px] sm:max-w-[320px] flex-1 snap-start shrink-0 rounded-2xl transition-all duration-200 ${
                 isOver
                   ? 'bg-indigo-50/50 dark:bg-indigo-900/10 ring-2 ring-indigo-500/30'
                   : `${col.bg} border border-gray-200 dark:border-gray-700`

@@ -305,14 +305,14 @@ export default function Tasks() {
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-900 z-10">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Nouvelle Tâche</h3>
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col">
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-900 z-10 shrink-0">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Nouvelle Tâche</h3>
               <button type="button" onClick={() => setModalOpen(false)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={onCreate} className="p-5 space-y-4">
+            <form onSubmit={onCreate} className="p-4 sm:p-5 space-y-4 flex-1">
               {formError && (
                 <p className="text-sm text-red-500 bg-red-50 dark:bg-red-500/10 px-3 py-2 rounded-lg">{formError}</p>
               )}
@@ -379,7 +379,7 @@ export default function Tasks() {
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
                 />
               </div>
-              <div className="flex gap-2 justify-end pt-2">
+              <div className="flex flex-col sm:flex-row gap-2 justify-end pt-2">
                 <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 rounded-xl border text-sm">Annuler</button>
                 <button type="submit" disabled={formLoading} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-50">
                   {formLoading ? 'Création…' : 'Créer'}

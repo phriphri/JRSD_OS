@@ -74,6 +74,23 @@ export default function Layout() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    };
+  }, [mobileMenuOpen]);
+
   const onTouchStart = (e) => {
     setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientX);
@@ -172,6 +189,10 @@ export default function Layout() {
   return (
     <div
       className="flex min-h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans transition-colors duration-300"
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEndHandler}
@@ -223,18 +244,39 @@ export default function Layout() {
       </aside>
 
       {/* ── MAIN WRAPPER ─────────────────────────────────────────── */}
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-        <header className="flex items-center justify-between px-5 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
-          <div className="flex items-center gap-3 min-w-0">
-            <span className="text-slate-900 dark:text-white font-bold text-base tracking-tight truncate">
+      <div className="flex flex-col flex-1 min-h-0">
+        <header className="flex items-center justify-between px-3 md:px-5 py-3 h-14 md:h-auto bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors duration-300 shrink-0">
+          {/* Left side - Hamburger on mobile, nothing on desktop */}
+          <div className="flex items-center gap-2 md:hidden">
+            <button
+              className="w-11 h-11 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              onClick={() => setMobileMenuOpen((o) => !o)}
+            >
+              {mobileMenuOpen ? (
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
+            </button>
+          </div>
+
+          {/* Center - Page title */}
+          <div className="flex items-center justify-center flex-1 min-w-0 px-2 md:px-0 md:justify-start">
+            <span className="text-slate-900 dark:text-white font-bold text-sm md:text-base tracking-tight truncate text-center md:text-left">
               {activeTitle}
             </span>
           </div>
-          <div className="flex items-center gap-4">
+
+          {/* Right side - Settings and User */}
+          <div className="flex items-center gap-2 md:gap-4">
             <div className="relative">
               <button
                 onClick={() => { setSettingsOpen((o) => !o); setProfileMenuOpen(false); }}
-                className="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
+                className="w-11 h-11 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
               >
                 <Settings className="w-5 h-5" />
               </button>
@@ -272,17 +314,15 @@ export default function Layout() {
             <div className="relative">
               <button
                 onClick={() => { setProfileMenuOpen((o) => !o); setSettingsOpen(false); }}
-                className="flex items-center gap-2 text-sm focus:outline-none p-1 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                className="w-11 h-11 flex items-center justify-center rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors focus:outline-none"
               >
                 {currentUser.avatar ? (
-                  <img src={`http://localhost:3001${currentUser.avatar}`} alt="Avatar" className="w-8 h-8 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700" />
+                  <img src={`http://localhost:3001${currentUser.avatar}`} alt="Avatar" className="w-9 h-9 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700" />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
                     {currentUser.initials}
                   </div>
                 )}
-                <span className="text-slate-900 dark:text-white font-medium">{currentUser.fullName}</span>
-                <ChevronDown className="w-4 h-4 text-slate-400" />
               </button>
               {profileMenuOpen && (
                 <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md shadow-lg z-20 overflow-hidden">
@@ -308,28 +348,6 @@ export default function Layout() {
                 </div>
               )}
             </div>
-          </div>
-        </header>
-
-        <header className="flex md:hidden items-center justify-between px-5 h-14 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shrink-0 z-30 transition-colors duration-300">
-          <div className="flex items-center min-w-0">
-            <h2 className="text-slate-900 dark:text-white font-bold text-sm truncate">{activeTitle}</h2>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              onClick={() => setMobileMenuOpen((o) => !o)}
-            >
-              {mobileMenuOpen ? (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              )}
-            </button>
           </div>
         </header>
 
@@ -412,44 +430,14 @@ export default function Layout() {
           </div>
         </aside>
 
-        <main ref={scrollRef} className="flex-1 overflow-auto scroll-smooth relative overscroll-contain flex flex-col bg-slate-50 dark:bg-slate-950">
-          <div className={`max-w-6xl w-full mx-auto px-4 md:px-8 py-8 flex-1 ${activeSection === 'messages' ? 'h-full' : ''}`}>
+        <main ref={scrollRef} className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth relative overscroll-contain flex flex-col bg-slate-50 dark:bg-slate-950 min-h-0">
+          <div className={`w-full max-w-full mx-auto px-4 md:px-8 py-4 sm:py-6 md:py-8 ${activeSection === 'messages' ? 'h-full' : ''} flex-1`}>
             {renderActivePage()}
           </div>
 
-          <footer className="w-full py-4 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800 mt-auto bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm shrink-0 pb-20 md:pb-4">
+          <footer className="w-full py-3 sm:py-4 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm shrink-0">
             © J-RSD 2026 — Tous droits réservés.
           </footer>
-
-          <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-[#0A0A0A]/95 backdrop-blur-md border-t border-slate-200/60 dark:border-white/10 flex z-30 pb-safe shadow-[0_-4px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_10px_rgba(0,0,0,0.2)]">
-            {visibleNav.slice(0, 5).map(({ id, label, icon }) => {
-              const active = activeSection === id;
-              return (
-                <button
-                  key={id}
-                  onClick={() => navigateToSection(id)}
-                  className={`flex-1 flex flex-col items-center gap-1 py-3 px-1 transition-all active:scale-95 ${
-                    active ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300'
-                  }`}
-                >
-                  <div className="relative">
-                    {icon}
-                    {id === 'notifications' && unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-[#0A0A0A]" />
-                    )}
-                    {id === 'messages' && unreadMessagesCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-[#0A0A0A]" />
-                    )}
-                  </div>
-                  <span className={`text-[9px] font-semibold uppercase tracking-wider ${active ? 'opacity-100' : 'opacity-70'}`}>
-                    {label}
-                  </span>
-                  {active && <div className="absolute bottom-1 w-1 h-1 rounded-full bg-blue-600 dark:bg-blue-400" />}
-                </button>
-              );
-            })}
-          </div>
-          <div className="h-20 md:hidden" />
         </main>
       </div>
 

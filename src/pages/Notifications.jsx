@@ -109,33 +109,38 @@ export default function Notifications() {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-zinc-900 rounded-xl max-w-md w-full p-6 shadow-xl border border-slate-200 dark:border-zinc-800">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Nouvelle notification</h3>
-            <form onSubmit={handleCreate}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-zinc-300 mb-1">Titre</label>
-                  <input
-                    type="text"
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Titre de l'annonce"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-zinc-300 mb-1">Message</label>
-                  <textarea
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 h-32 resize-none"
-                    placeholder="Contenu de la notification..."
-                    required
-                  />
-                </div>
+          <div className="bg-white dark:bg-zinc-900 rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto flex flex-col shadow-xl border border-slate-200 dark:border-zinc-800">
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 dark:border-zinc-800 shrink-0">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Nouvelle notification</h3>
+              <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <form onSubmit={handleCreate} className="p-4 sm:p-6 space-y-4 flex-1">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-zinc-300 mb-1">Titre</label>
+                <input
+                  type="text"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Titre de l'annonce"
+                  required
+                />
               </div>
-              <div className="flex gap-3 mt-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-zinc-300 mb-1">Message</label>
+                <textarea
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 h-32 resize-none"
+                  placeholder="Contenu de la notification..."
+                  required
+                />
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-200 dark:border-zinc-800 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}

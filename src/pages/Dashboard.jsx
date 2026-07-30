@@ -73,16 +73,16 @@ function KPICard({ label, value, sub, icon, urgent = false, accent = false, dela
 
   return (
     <div
-      className={`relative overflow-hidden bg-white dark:bg-[#0A0A0A] border rounded-2xl p-6 transition-all duration-500 hover:shadow-lg hover:-translate-y-1 ${borderCls} ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+      className={`relative overflow-hidden bg-white dark:bg-[#0A0A0A] border rounded-2xl p-4 sm:p-5 transition-all duration-500 hover:shadow-lg hover:-translate-y-1 ${borderCls} ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
       <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-transparent ${urgent ? 'to-red-500/10' : accent ? 'to-indigo-500/10' : 'to-blue-500/5'} blur-2xl -mr-10 -mt-10 rounded-full`} />
-      <div className="relative z-10 flex justify-between items-start mb-4">
-        <span className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">{label}</span>
-        <div className={`p-2 rounded-xl backdrop-blur-sm ${iconCls}`}>{icon}</div>
+      <div className="relative z-10 flex justify-between items-start mb-3">
+        <span className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wider truncate">{label}</span>
+        <div className={`p-1.5 sm:p-2 rounded-xl backdrop-blur-sm shrink-0 ${iconCls}`}>{icon}</div>
       </div>
-      <p className={`relative z-10 text-4xl font-bold tracking-tight ${valueCls}`}>{value}</p>
-      {sub && <p className="relative z-10 text-slate-500 dark:text-slate-500 text-sm mt-2 font-medium">{sub}</p>}
+      <p className={`relative z-10 text-2xl sm:text-4xl font-bold tracking-tight ${valueCls}`}>{value}</p>
+      {sub && <p className="relative z-10 text-slate-500 dark:text-slate-500 text-xs sm:text-sm mt-1.5 sm:mt-2 font-medium truncate">{sub}</p>}
     </div>
   );
 }
@@ -183,9 +183,9 @@ function AdminDashboard({ stats, projects }) {
     : 0;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-8">
       {/* KPI Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KPICard delay={0} label={t.kpi_prog_glob} value={`${avgProgress}%`}
           sub={`${projets.total} projet${projets.total !== 1 ? 's' : ''} au total`} icon={<IconChart />} />
         <KPICard delay={80} label={t.kpi_agents} value={nb_agents}
@@ -205,8 +205,8 @@ function AdminDashboard({ stats, projects }) {
       </div>
 
       {/* Avancement des projets */}
-      <div className="bg-white dark:bg-[#0A0A0A] border border-slate-200/60 dark:border-white/10 rounded-2xl p-8 shadow-sm">
-        <h3 className="text-slate-900 dark:text-white font-semibold text-lg mb-6">{t.avancement}</h3>
+      <div className="bg-white dark:bg-[#0A0A0A] border border-slate-200/60 dark:border-white/10 rounded-2xl p-4 sm:p-6 md:p-8 shadow-sm">
+        <h3 className="text-slate-900 dark:text-white font-semibold text-base sm:text-lg mb-4 sm:mb-6">{t.avancement}</h3>
         <div className="space-y-5">
           {projects.length === 0 ? (
             <p className="text-slate-500 text-sm">Aucun projet enregistré.</p>
@@ -298,9 +298,9 @@ function ManagerDashboard({ stats, projects }) {
     : 100;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-8">
       {/* KPI équipe */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KPICard delay={0} label={t.kpi_prog_glob} value={`${avgProgress}%`}
           sub={`${projets.total} projet${projets.total !== 1 ? 's' : ''} gérés`} icon={<IconChart />} />
         <KPICard delay={80} label={t.kpi_agents} value={nb_membres}
@@ -312,9 +312,9 @@ function ManagerDashboard({ stats, projects }) {
       </div>
 
       {/* Mes KPIs personnels */}
-      <div className="bg-white dark:bg-[#0A0A0A] border border-slate-200/60 dark:border-white/10 rounded-2xl p-6 shadow-sm">
-        <h3 className="text-slate-900 dark:text-white font-semibold text-base mb-4">{t.mes_taches}</h3>
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+      <div className="bg-white dark:bg-[#0A0A0A] border border-slate-200/60 dark:border-white/10 rounded-2xl p-4 sm:p-6 shadow-sm">
+        <h3 className="text-slate-900 dark:text-white font-semibold text-sm sm:text-base mb-3 sm:mb-4">{t.mes_taches}</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
           <div className="text-center p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
             <p className="text-2xl font-bold text-slate-900 dark:text-white">{myScore}%</p>
             <p className="text-xs text-slate-500 mt-0.5">Complété</p>
@@ -339,8 +339,8 @@ function ManagerDashboard({ stats, projects }) {
       </div>
 
       {/* Avancement des projets gérés */}
-      <div className="bg-white dark:bg-[#0A0A0A] border border-slate-200/60 dark:border-white/10 rounded-2xl p-8 shadow-sm">
-        <h3 className="text-slate-900 dark:text-white font-semibold text-lg mb-6">Avancement de vos projets</h3>
+      <div className="bg-white dark:bg-[#0A0A0A] border border-slate-200/60 dark:border-white/10 rounded-2xl p-4 sm:p-6 md:p-8 shadow-sm">
+        <h3 className="text-slate-900 dark:text-white font-semibold text-base sm:text-lg mb-4 sm:mb-6">Avancement de vos projets</h3>
         <div className="space-y-5">
           {projects.length === 0 ? (
             <p className="text-slate-500 text-sm">Aucun projet géré.</p>
@@ -412,12 +412,12 @@ function UserDashboard({ stats }) {
   const myScore = score ?? (taches.total > 0 ? Math.round((taches.termine / taches.total) * 100) : 100);
 
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="space-y-4 sm:space-y-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Score circulaire */}
-        <div className="bg-white dark:bg-[#0A0A0A] border border-slate-200/60 dark:border-white/10 rounded-2xl p-8 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+        <div className="bg-white dark:bg-[#0A0A0A] border border-slate-200/60 dark:border-white/10 rounded-2xl p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="relative w-40 h-40">
+          <div className="relative w-32 h-32 sm:w-40 sm:h-40">
             <svg className="w-full h-full -rotate-90 drop-shadow-md" viewBox="0 0 100 100">
               <circle cx="50" cy="50" r="42" stroke="currentColor" className="text-slate-100 dark:text-white/5" strokeWidth="8" fill="none" />
               <circle
@@ -437,37 +437,37 @@ function UserDashboard({ stats }) {
               </defs>
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-4xl font-bold tracking-tighter text-slate-900 dark:text-white">{myScore}%</span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold tracking-wider mt-1">Complété</span>
+              <span className="text-3xl sm:text-4xl font-bold tracking-tighter text-slate-900 dark:text-white">{myScore}%</span>
+              <span className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold tracking-wider mt-0.5 sm:mt-1">Complété</span>
             </div>
           </div>
-          <p className="text-slate-900 dark:text-white font-semibold mt-4 text-center">
+          <p className="text-slate-900 dark:text-white font-semibold text-sm sm:text-base mt-3 sm:mt-4 text-center">
             {myScore === 100 ? '🎉 Parfait !' : myScore >= 60 ? '👍 Bon rythme' : '⚡ Quelques retards'}
           </p>
-          <p className="text-slate-500 dark:text-slate-400 text-xs text-center mt-1">
+          <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs text-center mt-0.5 sm:mt-1">
             {taches.termine} / {taches.total} tâche{taches.total !== 1 ? 's' : ''} terminée{taches.total !== 1 ? 's' : ''}
           </p>
         </div>
 
         {/* Détails tâches */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-[#0A0A0A] border border-slate-200/60 dark:border-white/10 rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition-shadow">
-              <p className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{taches.a_faire}</p>
-              <p className="text-slate-500 dark:text-slate-400 text-xs mt-1 font-medium">À faire</p>
+        <div className="lg:col-span-2 space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div className="bg-white dark:bg-[#0A0A0A] border border-slate-200/60 dark:border-white/10 rounded-2xl p-3 sm:p-5 text-center shadow-sm hover:shadow-md transition-shadow">
+              <p className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{taches.a_faire}</p>
+              <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-medium">À faire</p>
             </div>
-            <div className="bg-white dark:bg-[#0A0A0A] border border-amber-500/30 dark:border-amber-500/20 rounded-2xl p-5 text-center shadow-sm shadow-amber-500/5 hover:shadow-md transition-shadow">
-              <p className="text-3xl font-bold tracking-tight text-amber-500 dark:text-amber-400">{taches.en_cours}</p>
-              <p className="text-slate-500 dark:text-slate-400 text-xs mt-1 font-medium">En cours</p>
+            <div className="bg-white dark:bg-[#0A0A0A] border border-amber-500/30 dark:border-amber-500/20 rounded-2xl p-3 sm:p-5 text-center shadow-sm shadow-amber-500/5 hover:shadow-md transition-shadow">
+              <p className="text-2xl sm:text-3xl font-bold tracking-tight text-amber-500 dark:text-amber-400">{taches.en_cours}</p>
+              <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-medium">En cours</p>
             </div>
-            <div className="bg-white dark:bg-[#0A0A0A] border border-emerald-500/30 dark:border-emerald-500/20 rounded-2xl p-5 text-center shadow-sm shadow-emerald-500/5 hover:shadow-md transition-shadow">
-              <p className="text-3xl font-bold tracking-tight text-emerald-500 dark:text-emerald-400">{taches.termine}</p>
-              <p className="text-slate-500 dark:text-slate-400 text-xs mt-1 font-medium">Terminées</p>
+            <div className="bg-white dark:bg-[#0A0A0A] border border-emerald-500/30 dark:border-emerald-500/20 rounded-2xl p-3 sm:p-5 text-center shadow-sm shadow-emerald-500/5 hover:shadow-md transition-shadow">
+              <p className="text-2xl sm:text-3xl font-bold tracking-tight text-emerald-500 dark:text-emerald-400">{taches.termine}</p>
+              <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-medium">Terminées</p>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-[#0A0A0A] border border-slate-200/60 dark:border-white/10 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-            <h3 className="text-slate-900 dark:text-white font-semibold text-base mb-4">{t.echeances_imm}</h3>
+          <div className="bg-white dark:bg-[#0A0A0A] border border-slate-200/60 dark:border-white/10 rounded-2xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
+            <h3 className="text-slate-900 dark:text-white font-semibold text-sm sm:text-base mb-3 sm:mb-4">{t.echeances_imm}</h3>
             {urgent_tasks.length === 0 ? (
               <p className="text-slate-500 dark:text-slate-500 text-sm text-center py-4">{t.aucune_alerte}</p>
             ) : (
@@ -540,12 +540,12 @@ function DashboardSection() {
 
   return (
     <section id="dashboard" className="scroll-mt-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 sm:mb-10 gap-3 sm:gap-4">
         <div>
-          <p className="text-blue-600 dark:text-blue-400 text-sm font-semibold mb-2 tracking-wide uppercase">
+          <p className="text-blue-600 dark:text-blue-400 text-xs sm:text-sm font-semibold mb-1.5 sm:mb-2 tracking-wide uppercase">
             {isAdmin ? t.org_view : isManager ? t.team_view : t.pers_view}
           </p>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white" style={{ fontSize: 'clamp(1.25rem, 5vw, 1.875rem)' }}>
             {t.greeting}, {firstName} 👋
           </h2>
         </div>
@@ -561,9 +561,9 @@ function DashboardSection() {
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 animate-pulse">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-36 bg-slate-100 dark:bg-slate-800/50 rounded-2xl" />
+            <div key={i} className="h-28 sm:h-36 bg-slate-100 dark:bg-slate-800/50 rounded-2xl" />
           ))}
         </div>
       ) : dashStats ? (

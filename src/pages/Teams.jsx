@@ -350,16 +350,16 @@ export default function Teams() {
       {/* Modal création / édition */}
       {modalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-blue-100 dark:border-blue-500/20">
-            <div className="flex items-center justify-between p-5 border-b border-blue-100 dark:border-white/10">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-blue-100 dark:border-blue-500/20 flex flex-col">
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-blue-100 dark:border-white/10 shrink-0">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
                 {editing ? 'Modifier l\'équipe' : 'Nouvelle équipe'}
               </h3>
               <button type="button" onClick={() => setModalOpen(false)} className="p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-white/5">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-5 space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4 flex-1">
               {error && <p className="text-red-500 text-sm bg-red-50 dark:bg-red-500/10 px-3 py-2 rounded-lg">{error}</p>}
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">Nom *</label>
@@ -408,7 +408,7 @@ export default function Teams() {
                 </p>
               </div>
               <button type="submit" disabled={loading}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-emerald-600 text-white font-semibold text-sm disabled:opacity-50">
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-emerald-600 text-white font-semibold text-sm disabled:opacity-50 shrink-0">
                 {loading ? 'Enregistrement…' : editing ? 'Mettre à jour' : 'Créer l\'équipe'}
               </button>
             </form>

@@ -285,9 +285,12 @@ function AgentModal({ agent, currentUser, onClose, onChangeRole, onToggleStatus,
           border: '1px solid var(--ac-border)',
           borderRadius: 20,
           width: '100%', maxWidth: 420,
+          maxHeight: '90vh',
           overflow: 'hidden',
           boxShadow: '0 24px 60px rgba(0,0,0,0.22)',
           position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
         {/* colored top band */}
@@ -298,6 +301,7 @@ function AgentModal({ agent, currentUser, onClose, onChangeRole, onToggleStatus,
           display: 'flex', alignItems: 'flex-end',
           padding: '0 20px 0',
           position: 'relative',
+          flexShrink: 0,
         }}>
           <span style={{
             position: 'absolute', top: 0, left: 0, right: 0, height: 3,
@@ -318,7 +322,7 @@ function AgentModal({ agent, currentUser, onClose, onChangeRole, onToggleStatus,
         </div>
 
         {/* avatar overlapping band */}
-        <div style={{ padding: '0 24px 24px', marginTop: -28 }}>
+        <div style={{ padding: '0 20px 20px', marginTop: -28, overflowY: 'auto', flex: 1 }}>
           <div style={{
             display: 'flex', alignItems: 'flex-end', gap: 14, marginBottom: 16,
           }}>
@@ -338,7 +342,7 @@ function AgentModal({ agent, currentUser, onClose, onChangeRole, onToggleStatus,
               }}>
                 {agent.nom_prenom}
               </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
                 <span style={{
                   fontSize: 11, fontWeight: 700,
                   padding: '2px 8px', borderRadius: 20,
@@ -420,7 +424,7 @@ function AgentModal({ agent, currentUser, onClose, onChangeRole, onToggleStatus,
               <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--ac-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
                 CV
               </p>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() => onPreviewCv(agent)}
@@ -481,9 +485,9 @@ function AgentModal({ agent, currentUser, onClose, onChangeRole, onToggleStatus,
 
           {/* actions */}
           {!isSelf && (
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {/* role dropdown */}
-              <div style={{ position: 'relative', flex: 1 }}>
+              <div style={{ position: 'relative' }}>
                 <button
                   type="button"
                   disabled={isBusy}
@@ -553,7 +557,7 @@ function AgentModal({ agent, currentUser, onClose, onChangeRole, onToggleStatus,
                 disabled={isBusy}
                 onClick={() => onToggleStatus(agent)}
                 style={{
-                  flex: 1, padding: '9px 12px',
+                  width: '100%', padding: '9px 12px',
                   borderRadius: 10,
                   border: agent.statut === 'actif'
                     ? '1px solid rgba(244,63,94,0.25)'

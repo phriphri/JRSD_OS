@@ -63,7 +63,7 @@ function MessageBubble({ msg, isMe, contact, recipientOnline, onEdit, onDelete }
           )}
         </div>
       )}
-      <div className={`relative max-w-[78%] ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>
+      <div className={`relative max-w-[85%] sm:max-w-[78%] ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>
         {isMe && !msg.isDeleted && !editing && (
           <button
             type="button"
@@ -90,19 +90,19 @@ function MessageBubble({ msg, isMe, contact, recipientOnline, onEdit, onDelete }
             <input
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm min-w-[200px]"
+              className="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm w-full max-w-[200px] sm:min-w-[200px]"
               autoFocus
             />
-            <button type="button" onClick={saveEdit} className="p-2 bg-indigo-600 text-white rounded-lg">
+            <button type="button" onClick={saveEdit} className="p-2 bg-indigo-600 text-white rounded-lg shrink-0">
               <Check className="w-4 h-4" />
             </button>
-            <button type="button" onClick={() => setEditing(false)} className="p-2 text-slate-400">
+            <button type="button" onClick={() => setEditing(false)} className="p-2 text-slate-400 shrink-0">
               <X className="w-4 h-4" />
             </button>
           </div>
         ) : (
           <div
-            className={`px-3 py-2 text-sm shadow-sm min-w-[120px] ${
+            className={`px-3 py-2 text-sm shadow-sm break-words overflow-hidden ${
               msg.isDeleted
                 ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 italic border border-slate-200 dark:border-slate-700 rounded-2xl'
                 : isMe
@@ -251,9 +251,19 @@ export default function Messages() {
 
         <div className="flex-1 overflow-y-auto">
           {conversations.length === 0 ? (
-            <p className="p-6 text-sm text-gray-500 text-center">
-              Aucune conversation. Lancez un nouveau tchat avec le bouton.
-            </p>
+            <div className="flex flex-col items-center justify-center h-full p-6">
+              <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
+                <MessageCircle className="w-8 h-8 text-slate-400" />
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-4">Aucune conversation</p>
+              <button
+                type="button"
+                onClick={() => setNewChatOpen(true)}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                Nouvelle discussion
+              </button>
+            </div>
           ) : (
             conversations.map((conv) => {
               return (
@@ -348,19 +358,19 @@ export default function Messages() {
               <div ref={messagesEndRef} />
             </div>
 
-            <form onSubmit={handleSend} className="p-3 bg-gray-50 dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800">
+            <form onSubmit={handleSend} className="p-3 bg-gray-50 dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 shrink-0">
               <div className="flex items-center gap-2 bg-white dark:bg-slate-800 rounded-full px-4 py-2 shadow-sm border border-gray-200/60 dark:border-slate-700">
                 <input
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder="Écrivez un message"
-                  className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 dark:text-slate-100"
+                  className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 dark:text-slate-100 min-w-0"
                 />
                 <button
                   type="submit"
                   disabled={!inputText.trim()}
-                  className="p-2 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 transition-colors"
+                  className="p-2 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 transition-colors shrink-0"
                 >
                   <Send className="w-5 h-5" />
                 </button>
