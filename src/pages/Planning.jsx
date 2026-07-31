@@ -2,7 +2,66 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useGlobalStore } from '../store/globalStore';
 import { Plus, Edit2, Trash2, Calendar as CalendarIcon, Clock, Users, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
-function EventModal({ isOpen, onClose, event = null, onSave }) {
+const TRANSLATIONS = {
+  FR: {
+    loading: 'Chargement...',
+    edit_event: "Modifier l'événement",
+    new_event: "Nouvel événement",
+    title: 'Titre',
+    title_ph: 'Ex: Réunion de synchronisation',
+    icon: 'Icône (optionnel)',
+    start_date: 'Date de début',
+    start_time: 'Heure de début',
+    end_date: 'Date de fin',
+    end_time: 'Heure de fin',
+    target: 'Cible',
+    everyone: 'Tout le monde',
+    specific_team: 'Équipe spécifique',
+    select_team: 'Sélectionnez une équipe...',
+    desc: 'Description',
+    desc_ph: "Détails de l'événement (optionnel)...",
+    cancel: 'Annuler',
+    save: 'Enregistrer',
+    confirm_del: "Voulez-vous vraiment supprimer cet événement ?",
+    unknown_team: 'Équipe inconnue',
+    team_cal: "Calendrier d'équipe",
+    planning: 'Planning',
+    upcoming: 'Événements à venir',
+    no_upcoming: 'Aucun événement à venir',
+    month_names: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'],
+    day_names: ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
+  },
+  EN: {
+    loading: 'Loading...',
+    edit_event: 'Edit event',
+    new_event: 'New event',
+    title: 'Title',
+    title_ph: 'Ex: Sync meeting',
+    icon: 'Icon (optional)',
+    start_date: 'Start date',
+    start_time: 'Start time',
+    end_date: 'End date',
+    end_time: 'End time',
+    target: 'Target',
+    everyone: 'Everyone',
+    specific_team: 'Specific team',
+    select_team: 'Select a team...',
+    desc: 'Description',
+    desc_ph: 'Event details (optional)...',
+    cancel: 'Cancel',
+    save: 'Save',
+    confirm_del: 'Are you sure you want to delete this event?',
+    unknown_team: 'Unknown team',
+    team_cal: 'Team calendar',
+    planning: 'Planning',
+    upcoming: 'Upcoming events',
+    no_upcoming: 'No upcoming events',
+    month_names: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+    day_names: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  }
+};
+
+function EventModal({ isOpen, onClose, event = null, onSave, t }) {
   const { teams } = useGlobalStore();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -70,7 +129,7 @@ function EventModal({ isOpen, onClose, event = null, onSave }) {
       <div className="bg-white dark:bg-gray-900 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 flex flex-col">
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-800 shrink-0">
           <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
-            {event ? "Modifier l'événement" : "Nouvel événement"}
+            {event ? t.edit_event : t.new_event}
           </h3>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
             <X className="w-5 h-5" />
@@ -78,19 +137,19 @@ function EventModal({ isOpen, onClose, event = null, onSave }) {
         </div>
         <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4 flex-1">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Titre</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.title}</label>
             <input
               required
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-              placeholder="Ex: Réunion de synchronisation"
+              placeholder={t.title_ph}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Icône (optionnel)</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t.icon}</label>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -114,36 +173,36 @@ function EventModal({ isOpen, onClose, event = null, onSave }) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date de début</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.start_date}</label>
               <input required type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Heure de début</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.start_time}</label>
               <input required type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date de fin</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.end_date}</label>
               <input required type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Heure de fin</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.end_time}</label>
               <input required type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cible</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.target}</label>
             <div className="flex gap-4 mb-2">
               <label className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
                 <input type="radio" value="all" checked={targetType === 'all'} onChange={() => setTargetType('all')} className="text-blue-600 focus:ring-blue-500" />
-                Tout le monde
+                {t.everyone}
               </label>
               <label className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
                 <input type="radio" value="team" checked={targetType === 'team'} onChange={() => setTargetType('team')} className="text-blue-600 focus:ring-blue-500" />
-                Équipe spécifique
+                {t.specific_team}
               </label>
             </div>
             {targetType === 'team' && (
@@ -153,31 +212,31 @@ function EventModal({ isOpen, onClose, event = null, onSave }) {
                 onChange={e => setTargetTeamId(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
-                <option value="">Sélectionnez une équipe...</option>
-                {teams.map(t => (
-                  <option key={t.id} value={t.id}>{t.nom}</option>
+                <option value="">{t.select_team}</option>
+                {teams.map(team => (
+                  <option key={team.id} value={team.id}>{team.nom}</option>
                 ))}
               </select>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t.desc}</label>
             <textarea
               rows="3"
               value={description}
               onChange={e => setDescription(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none"
-              placeholder="Détails de l'événement (optionnel)..."
+              placeholder={t.desc_ph}
             />
           </div>
 
           <div className="pt-4 flex flex-col sm:flex-row justify-end gap-3 border-t border-gray-200 dark:border-gray-800 shrink-0">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
-              Annuler
+              {t.cancel}
             </button>
             <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm">
-              Enregistrer
+              {t.save}
             </button>
           </div>
         </form>
@@ -187,10 +246,11 @@ function EventModal({ isOpen, onClose, event = null, onSave }) {
 }
 
 export default function Planning() {
-  const { currentUser, planningEvents, teams, createPlanningEvent, updatePlanningEvent, deletePlanningEvent, fetchPlanningEvents } = useGlobalStore();
+  const { currentUser, planningEvents, teams, createPlanningEvent, updatePlanningEvent, deletePlanningEvent, fetchPlanningEvents, language } = useGlobalStore();
+  const t = TRANSLATIONS[language === 'EN' ? 'EN' : 'FR'];
 
   if (!currentUser) {
-    return <div className="p-8 text-center text-gray-500">Chargement...</div>;
+    return <div className="p-8 text-center text-gray-500">{t.loading}</div>;
   }
 
   const isAdmin = currentUser?.role?.toLowerCase() === 'admin';
@@ -213,7 +273,7 @@ export default function Planning() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Voulez-vous vraiment supprimer cet événement ?")) {
+    if (window.confirm(t.confirm_del)) {
       await deletePlanningEvent(id);
     }
   };
@@ -233,15 +293,15 @@ export default function Planning() {
   const upcomingEvents = sortedEvents.filter(ev => new Date(ev.start_time) >= new Date()).slice(0, 10);
 
   const formatTime = (dateStr) => {
-    return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    return new Date(dateStr).toLocaleTimeString(language === 'EN' ? 'en-US' : 'fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
   const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    return new Date(dateStr).toLocaleDateString(language === 'EN' ? 'en-US' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   };
 
   const getTeamName = (teamId) => {
-    return teams.find(t => t.id === teamId)?.nom || 'Équipe inconnue';
+    return teams.find(team => team.id === teamId)?.nom || t.unknown_team;
   };
 
   const getDaysInMonth = (date) => {
@@ -299,8 +359,8 @@ export default function Planning() {
     });
   };
 
-  const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
-  const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+  const monthNames = t.month_names;
+  const dayNames = t.day_names;
 
   const days = getDaysInMonth(currentMonth);
 
@@ -309,9 +369,9 @@ export default function Planning() {
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
         <div>
           <p className="text-blue-600 dark:text-blue-400 text-sm font-semibold mb-2 tracking-wide uppercase">
-            Calendrier d'équipe
+            {t.team_cal}
           </p>
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Planning</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">{t.planning}</h2>
         </div>
       </div>
 
@@ -400,14 +460,14 @@ export default function Planning() {
         {/* Sidebar - 30% */}
         <div className="lg:col-span-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
           <div className="p-4 border-b border-gray-200 dark:border-gray-800">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Événements à venir</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t.upcoming}</h3>
           </div>
 
           <div className="p-4 space-y-3 max-h-[600px] overflow-y-auto">
             {upcomingEvents.length === 0 ? (
               <div className="text-center py-8">
                 <CalendarIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-500 dark:text-gray-400">Aucun événement à venir</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t.no_upcoming}</p>
               </div>
             ) : (
               upcomingEvents.map(ev => {
@@ -439,7 +499,7 @@ export default function Planning() {
                     <div className="flex items-center gap-2">
                       {isAll ? (
                         <span className="text-xs px-2 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">
-                          Tout le monde
+                          {t.everyone}
                         </span>
                       ) : (
                         <span className="text-xs px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
@@ -478,7 +538,7 @@ export default function Planning() {
         </div>
       </div>
 
-      <EventModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} event={editingEvent} onSave={handleSaveEvent} />
+      <EventModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} event={editingEvent} onSave={handleSaveEvent} t={t} />
     </section>
   );
 }

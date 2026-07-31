@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useGlobalStore } from '../store/globalStore';
 import {
   Send, MessageCircle, MoreVertical, Pencil, Trash2, X, Check, CheckCheck,
@@ -14,10 +14,6 @@ function ReadReceipt({ isRead, recipientOnline }) {
   return <Check className="w-4 h-4 text-slate-400 shrink-0" strokeWidth={2.5} />;
 }
 
-function avatarUrl(email) {
-  return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(email || 'user')}&backgroundColor=e2e8f0`;
-}
-
 function getInitials(name) {
   if (!name) return '??';
   const parts = name.trim().split(' ');
@@ -26,10 +22,25 @@ function getInitials(name) {
 }
 
 function formatTime(dateStr) {
-  return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDateHeader(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  if (d.toDateString() === today.toDateString()) return 'Aujourd’hui';
+  if (d.toDateString() === yesterday.toDateString()) return 'Hier';
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function formatConvDate(dateStr) {
+  if (!dateStr) return '';
   const d = new Date(dateStr);
   const today = new Date();
   if (d.toDateString() === today.toDateString()) return formatTime(dateStr);
@@ -58,9 +69,6 @@ function MessageBubble({ msg, isMe, contact, recipientOnline, onEdit, onDelete }
           <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
             {getInitials(contact.name)}
           </div>
-          {recipientOnline && (
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full" />
-          )}
         </div>
       )}
       <div className={`relative max-w-[85%] sm:max-w-[78%] ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>
@@ -102,7 +110,7 @@ function MessageBubble({ msg, isMe, contact, recipientOnline, onEdit, onDelete }
           </div>
         ) : (
           <div
-            className={`px-3 py-2 text-sm shadow-sm break-words overflow-hidden ${
+            className={`px-3.5 py-2 text-sm shadow-sm break-words overflow-hidden ${
               msg.isDeleted
                 ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 italic border border-slate-200 dark:border-slate-700 rounded-2xl'
                 : isMe
@@ -118,7 +126,7 @@ function MessageBubble({ msg, isMe, contact, recipientOnline, onEdit, onDelete }
                 )}
               </span>
               {isMe && !msg.isDeleted && (
-                <span className="inline-flex items-center gap-0.5 shrink-0 self-end">
+                <span className="inline-flex items-center gap-1 shrink-0 self-end ml-1">
                   <span className="text-[10px] text-indigo-200 leading-none">{formatTime(msg.createdAt)}</span>
                   <ReadReceipt isRead={msg.isRead} recipientOnline={recipientOnline} />
                 </span>
@@ -126,9 +134,9 @@ function MessageBubble({ msg, isMe, contact, recipientOnline, onEdit, onDelete }
             </div>
           </div>
         )}
-        {!isMe || msg.isDeleted ? (
+        {(!isMe || msg.isDeleted) && !editing && (
           <span className="text-[10px] text-slate-400 mt-0.5 px-1">{formatTime(msg.createdAt)}</span>
-        ) : null}
+        )}
       </div>
     </div>
   );
@@ -202,10 +210,34 @@ export default function Messages() {
 
   const isOnline = (id) => onlineUsers.includes(id) || onlineUsers.includes(Number(id));
 
+  // Chronological sorting and date header grouping
+  const messagesWithDateHeaders = useMemo(() => {
+    if (!activeChatMessages || !activeChatMessages.length) return [];
+    
+    // Ensure chronological order (oldest first)
+    const sorted = [...activeChatMessages].sort(
+      (a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
+    );
+
+    const result = [];
+    let lastDateHeader = null;
+
+    for (const msg of sorted) {
+      const header = formatDateHeader(msg.createdAt);
+      if (header !== lastDateHeader) {
+        result.push({ isHeader: true, id: `header-${msg.id || msg.createdAt}`, title: header });
+        lastDateHeader = header;
+      }
+      result.push({ isHeader: false, msg });
+    }
+
+    return result;
+  }, [activeChatMessages]);
+
   return (
     <div className="flex h-full min-h-0 w-full bg-gray-50 dark:bg-slate-950 rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-800 shadow-xl font-sans">
       {/* Sidebar conversations */}
-      <div className={`${mobileShowChat ? 'hidden' : 'flex'} md:flex w-full md:w-[340px] flex-col bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800`}>
+      <div className={`${mobileShowChat ? 'hidden' : 'flex'} md:flex w-full md:w-[340px] flex-col bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 min-h-0`}>
         <div className="h-14 px-4 flex items-center justify-between bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 shrink-0">
           <h3 className="font-bold text-gray-800 dark:text-white">Discussions</h3>
           <div className="relative">
@@ -249,7 +281,7 @@ export default function Messages() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {conversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full p-6">
               <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
@@ -300,7 +332,7 @@ export default function Messages() {
       </div>
 
       {/* Zone chat */}
-      <div className={`${mobileShowChat ? 'flex' : 'hidden'} md:flex flex-1 flex-col bg-white dark:bg-slate-900 relative`}>
+      <div className={`${mobileShowChat ? 'flex' : 'hidden'} md:flex flex-1 flex-col bg-white dark:bg-slate-900 relative min-h-0`}>
         {!activeContactId || !contactDisplay ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-gray-50 dark:bg-slate-900/50">
             <div className="w-24 h-24 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center mb-6">
@@ -327,33 +359,40 @@ export default function Messages() {
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-bold text-gray-900 dark:text-white truncate">{contactDisplay.name}</h3>
-                <p className="text-xs text-gray-500 flex items-center gap-1.5">
-                  {isOnline(contactDisplay.id) ? (
-                    <>
-                      <span className="w-2 h-2 bg-green-500 rounded-full" /> En ligne
-                    </>
-                  ) : (
-                    'Hors ligne'
-                  )}
+                <p className="text-xs text-gray-500">
+                  {isOnline(contactDisplay.id) ? 'En ligne' : 'Hors ligne'}
                 </p>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3">
-              {activeChatMessages.length === 0 ? (
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 min-h-0">
+              {messagesWithDateHeaders.length === 0 ? (
                 <p className="text-center text-sm text-gray-500 py-8">Envoyez le premier message.</p>
               ) : (
-                activeChatMessages.map((msg) => (
-                  <MessageBubble
-                    key={msg.id}
-                    msg={msg}
-                    isMe={Number(msg.senderId) === Number(currentUser.id)}
-                    contact={contactDisplay}
-                    recipientOnline={isOnline(contactDisplay.id)}
-                    onEdit={updateMessage}
-                    onDelete={deleteMessage}
-                  />
-                ))
+                messagesWithDateHeaders.map((item) => {
+                  if (item.isHeader) {
+                    return (
+                      <div key={item.id} className="flex justify-center my-3">
+                        <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs font-medium rounded-full shadow-xs border border-slate-200/60 dark:border-slate-700/60">
+                          {item.title}
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  const msg = item.msg;
+                  return (
+                    <MessageBubble
+                      key={msg.id}
+                      msg={msg}
+                      isMe={Number(msg.senderId) === Number(currentUser.id)}
+                      contact={contactDisplay}
+                      recipientOnline={isOnline(contactDisplay.id)}
+                      onEdit={updateMessage}
+                      onDelete={deleteMessage}
+                    />
+                  );
+                })
               )}
               <div ref={messagesEndRef} />
             </div>

@@ -70,8 +70,6 @@ export default function Layout() {
   useEffect(() => {
     const fetchUnread = useGlobalStore.getState().fetchUnreadCount;
     fetchUnread();
-    const interval = setInterval(fetchUnread, 4000);
-    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -184,11 +182,9 @@ export default function Layout() {
 
   const rColors = ROLE_COLORS[userRole] || ROLE_COLORS.employe;
 
-  if (!currentUser) return null;
-
-  return (
+  if (!currentUser) return null;  return (
     <div
-      className="flex min-h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans transition-colors duration-300"
+      className="flex h-screen h-[100dvh] max-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans transition-colors duration-300"
       style={{
         paddingTop: 'env(safe-area-inset-top)',
         paddingBottom: 'env(safe-area-inset-bottom)',
@@ -198,8 +194,8 @@ export default function Layout() {
       onTouchEnd={onTouchEndHandler}
     >
       {/* ── SIDEBAR (Desktop) ─────────────────────────────────────── */}
-      <aside className="hidden md:flex flex-col w-64 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 h-full transition-colors duration-300 z-50">
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
+      <aside className="hidden md:flex flex-col w-64 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 h-full max-h-full transition-colors duration-300 z-50">
+        <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-200 dark:border-slate-800 transition-colors duration-300 shrink-0">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-300 shadow-sm">
             <span className="text-white font-black text-base">J</span>
           </div>
@@ -209,7 +205,7 @@ export default function Layout() {
           </div>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto hide-scrollbar">
+        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto min-h-0 hide-scrollbar">
           {visibleNav.map(({ id, label, icon }) => {
             const active = activeSection === id;
             return (
@@ -244,7 +240,7 @@ export default function Layout() {
       </aside>
 
       {/* ── MAIN WRAPPER ─────────────────────────────────────────── */}
-      <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex flex-col flex-1 h-full min-h-0 min-w-0 overflow-hidden">
         <header className="flex items-center justify-between px-3 md:px-5 py-3 h-14 md:h-auto bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors duration-300 shrink-0">
           {/* Left side - Hamburger on mobile, nothing on desktop */}
           <div className="flex items-center gap-2 md:hidden">
@@ -317,7 +313,7 @@ export default function Layout() {
                 className="w-11 h-11 flex items-center justify-center rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors focus:outline-none"
               >
                 {currentUser.avatar ? (
-                  <img src={`http://localhost:3001${currentUser.avatar}`} alt="Avatar" className="w-9 h-9 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700" />
+                  <img src={currentUser.avatar.startsWith('http') || currentUser.avatar.startsWith('data:') ? currentUser.avatar : `http://localhost:3001${currentUser.avatar}`} alt="Avatar" className="w-9 h-9 rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700" />
                 ) : (
                   <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
                     {currentUser.initials}
@@ -359,11 +355,11 @@ export default function Layout() {
         />
 
         <aside
-          className={`md:hidden fixed top-0 left-0 bottom-0 w-72 bg-white dark:bg-[#0A0A0A] border-r border-slate-200/60 dark:border-white/10 shadow-2xl z-50 transform transition-transform duration-300 ease-out flex flex-col ${
+          className={`md:hidden fixed top-0 left-0 bottom-0 w-72 h-full h-[100dvh] max-h-screen bg-white dark:bg-[#0A0A0A] border-r border-slate-200/60 dark:border-white/10 shadow-2xl z-50 transform transition-transform duration-300 ease-out flex flex-col ${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          <div className="flex items-center justify-between p-5 border-b border-slate-200/60 dark:border-white/10">
+          <div className="flex items-center justify-between p-5 border-b border-slate-200/60 dark:border-white/10 shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0 shadow-sm">
                 <span className="text-white font-black text-base">J</span>
@@ -380,7 +376,7 @@ export default function Layout() {
             </button>
           </div>
 
-          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto min-h-0">
             {visibleNav.map(({ id, label, icon }) => (
               <button
                 key={id}
@@ -407,10 +403,10 @@ export default function Layout() {
             ))}
           </nav>
 
-          <div className="p-5 border-t border-slate-200/60 dark:border-white/10 flex items-center justify-between bg-slate-50/50 dark:bg-white/5">
+          <div className="p-5 border-t border-slate-200/60 dark:border-white/10 flex items-center justify-between bg-slate-50/50 dark:bg-white/5 shrink-0">
             <div className="flex items-center gap-3">
               {currentUser.avatar ? (
-                <img src={`http://localhost:3001${currentUser.avatar}`} alt="Avatar" className="w-9 h-9 rounded-full object-cover shrink-0 ring-2 ring-white dark:ring-slate-900" />
+                <img src={currentUser.avatar.startsWith('http') || currentUser.avatar.startsWith('data:') ? currentUser.avatar : `http://localhost:3001${currentUser.avatar}`} alt="Avatar" className="w-9 h-9 rounded-full object-cover shrink-0 ring-2 ring-white dark:ring-slate-900" />
               ) : (
                 <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs ring-2 ring-white dark:ring-slate-900 shrink-0">
                   {currentUser.initials}
@@ -430,14 +426,10 @@ export default function Layout() {
           </div>
         </aside>
 
-        <main ref={scrollRef} className="flex-1 overflow-x-hidden overflow-y-auto scroll-smooth relative overscroll-contain flex flex-col bg-slate-50 dark:bg-slate-950 min-h-0">
-          <div className={`w-full max-w-full mx-auto px-4 md:px-8 py-4 sm:py-6 md:py-8 ${activeSection === 'messages' ? 'h-full' : ''} flex-1`}>
+        <main ref={scrollRef} className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto scroll-smooth relative overscroll-contain flex flex-col bg-slate-50 dark:bg-slate-950">
+          <div className={`w-full max-w-full mx-auto px-4 md:px-8 py-4 sm:py-6 md:py-8 ${activeSection === 'messages' ? 'h-full flex-1 flex flex-col min-h-0' : ''} flex-1`}>
             {renderActivePage()}
           </div>
-
-          <footer className="w-full py-3 sm:py-4 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm shrink-0">
-            © J-RSD 2026 — Tous droits réservés.
-          </footer>
         </main>
       </div>
 

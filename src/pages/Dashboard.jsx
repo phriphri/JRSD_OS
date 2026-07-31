@@ -87,7 +87,7 @@ function KPICard({ label, value, sub, icon, urgent = false, accent = false, dela
   );
 }
 
-function PlanningWidget({ events = [] }) {
+function PlanningWidget({ events = [], t }) {
   const upcomingEvents = [...events]
     .filter(ev => new Date(ev.start_time) >= new Date(new Date().setHours(0, 0, 0, 0)))
     .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
@@ -104,7 +104,7 @@ function PlanningWidget({ events = [] }) {
         <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
-        Prochains programmes au planning
+        {t.upcoming_programs}
       </h3>
       <div className="space-y-3">
         {upcomingEvents.map(ev => (
@@ -118,7 +118,7 @@ function PlanningWidget({ events = [] }) {
               <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{ev.title}</p>
               {ev.target_type && (
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {ev.target_type === 'all' ? "Toute l'organisation" : 'Votre équipe'}
+                  {ev.target_type === 'all' ? t.all_org : t.your_team}
                 </p>
               )}
             </div>
@@ -187,21 +187,21 @@ function AdminDashboard({ stats, projects }) {
       {/* KPI Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KPICard delay={0} label={t.kpi_prog_glob} value={`${avgProgress}%`}
-          sub={`${projets.total} projet${projets.total !== 1 ? 's' : ''} au total`} icon={<IconChart />} />
+          sub={`${projets.total} projet${projets.total !== 1 ? 's' : ''} ${t.total_proj}`} icon={<IconChart />} />
         <KPICard delay={80} label={t.kpi_agents} value={nb_agents}
-          sub="Comptes actifs" icon={<IconUsers />} />
+          sub={t.active_accounts} icon={<IconUsers />} />
         <KPICard delay={160} label={t.kpi_proj_crees} value={projets.total}
-          sub={`${projets.en_cours} en cours · ${projets.termine} terminés`} icon={<IconFolder />} />
+          sub={`${projets.en_cours} ${t.in_progress_completed} ${projets.termine} ${t.completed}`} icon={<IconFolder />} />
         <KPICard delay={240} label={t.kpi_teams} value={nb_equipes}
-          sub="Équipes enregistrées" icon={<IconTeam />} accent />
+          sub={t.reg_teams} icon={<IconTeam />} accent />
         <KPICard delay={320} label={t.kpi_proj_en_cours} value={projets.en_cours}
-          sub="Statut « en_cours »" icon={<IconPlayCircle />} />
+          sub={t.status_in_prog} icon={<IconPlayCircle />} />
         <KPICard delay={400} label={t.kpi_taches_tot} value={taches.total}
-          sub={`${taches.en_cours} en cours · ${taches.termine} terminées`} icon={<IconTask />} />
+          sub={`${taches.en_cours} ${t.in_progress_completed} ${taches.termine} ${t.completed_f}`} icon={<IconTask />} />
         <KPICard delay={480} label={t.kpi_proj_term} value={projets.termine}
-          sub="Statut « terminé »" icon={<IconFolder />} accent />
+          sub={t.status_completed} icon={<IconFolder />} accent />
         <KPICard delay={560} urgent label={t.kpi_alertes} value={totalUrgent}
-          sub="Échéances ≤ 3 jours" icon={<IconAlert />} />
+          sub={t.deadlines_3d} icon={<IconAlert />} />
       </div>
 
       {/* Avancement des projets */}
@@ -209,7 +209,7 @@ function AdminDashboard({ stats, projects }) {
         <h3 className="text-slate-900 dark:text-white font-semibold text-base sm:text-lg mb-4 sm:mb-6">{t.avancement}</h3>
         <div className="space-y-5">
           {projects.length === 0 ? (
-            <p className="text-slate-500 text-sm">Aucun projet enregistré.</p>
+            <p className="text-slate-500 text-sm">{t.no_proj_reg}</p>
           ) : (
             projects.map((proj, i) => (
               <div key={proj.id}>
@@ -223,7 +223,7 @@ function AdminDashboard({ stats, projects }) {
                         ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                         : 'bg-slate-200 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700'
                     }`}>
-                      {proj.statut === 'termine' ? 'Terminé' : proj.statut === 'en_cours' ? 'En cours' : 'En attente'}
+                      {proj.statut === 'termine' ? t.status_done : proj.statut === 'en_cours' ? t.status_prog : t.status_wait}
                     </span>
                   </div>
                   <span className="text-slate-600 dark:text-slate-300 text-sm font-bold shrink-0 ml-2">{proj.progress || 0}%</span>
@@ -241,7 +241,7 @@ function AdminDashboard({ stats, projects }) {
         <div className="bg-white dark:bg-[#0A0A0A] border border-red-500/20 dark:border-red-900/30 rounded-2xl p-6 shadow-sm">
           <h3 className="text-slate-900 dark:text-white font-semibold text-lg mb-4 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            Alertes urgentes — Échéances ≤ 3 jours
+            {t.urgent_alerts_3d}
           </h3>
           <div className="space-y-2">
             {urgent_tasks.map(t => {
@@ -249,12 +249,12 @@ function AdminDashboard({ stats, projects }) {
               return (
                 <div key={`t-${t.id}`} className="flex items-center justify-between gap-3 p-2.5 bg-red-950/10 border border-red-900/30 rounded-lg">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0">Tâche</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0">{t.task}</span>
                     <span className="text-sm text-slate-900 dark:text-white truncate">{t.titre}</span>
                     {t.assignee_name && <span className="text-xs text-slate-400 shrink-0">→ {t.assignee_name}</span>}
                   </div>
                   <span className="text-red-400 text-xs font-bold shrink-0">
-                    {d < 0 ? `${Math.abs(d)}j retard` : d === 0 ? 'Auj.' : `${d}j`}
+                    {d < 0 ? `${Math.abs(d)}${t.days} ${t.late}` : d === 0 ? t.today : `${d}${t.days}`}
                   </span>
                 </div>
               );
@@ -264,11 +264,11 @@ function AdminDashboard({ stats, projects }) {
               return (
                 <div key={`p-${p.id}`} className="flex items-center justify-between gap-3 p-2.5 bg-orange-950/10 border border-orange-900/30 rounded-lg">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-xs text-orange-400 shrink-0 font-semibold">Projet</span>
+                    <span className="text-xs text-orange-400 shrink-0 font-semibold">{t.project}</span>
                     <span className="text-sm text-slate-900 dark:text-white truncate">{p.nom}</span>
                   </div>
                   <span className="text-orange-400 text-xs font-bold shrink-0">
-                    {d < 0 ? `${Math.abs(d)}j retard` : d === 0 ? 'Auj.' : `${d}j`}
+                    {d < 0 ? `${Math.abs(d)}${t.days} ${t.late}` : d === 0 ? t.today : `${d}${t.days}`}
                   </span>
                 </div>
               );
@@ -277,7 +277,7 @@ function AdminDashboard({ stats, projects }) {
         </div>
       )}
 
-      <PlanningWidget events={upcoming_events} />
+      <PlanningWidget events={upcoming_events} t={t} />
     </div>
   );
 }
@@ -302,13 +302,13 @@ function ManagerDashboard({ stats, projects }) {
       {/* KPI équipe */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KPICard delay={0} label={t.kpi_prog_glob} value={`${avgProgress}%`}
-          sub={`${projets.total} projet${projets.total !== 1 ? 's' : ''} gérés`} icon={<IconChart />} />
+          sub={`${projets.total} projet${projets.total !== 1 ? 's' : ''} ${t.managed_proj}`} icon={<IconChart />} />
         <KPICard delay={80} label={t.kpi_agents} value={nb_membres}
-          sub="Actifs dans votre équipe" icon={<IconUsers />} />
+          sub={t.active_team} icon={<IconUsers />} />
         <KPICard delay={160} label={t.kpi_taches_tot} value={taches.total}
           sub={`${taches.en_cours} en cours · ${taches.termine} terminées`} icon={<IconTask />} />
         <KPICard delay={240} urgent label={t.kpi_alertes} value={urgent_tasks.length}
-          sub="Échéances ≤ 3 jours" icon={<IconAlert />} />
+          sub={t.deadlines_3d} icon={<IconAlert />} />
       </div>
 
       {/* Mes KPIs personnels */}
@@ -317,33 +317,33 @@ function ManagerDashboard({ stats, projects }) {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
           <div className="text-center p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
             <p className="text-2xl font-bold text-slate-900 dark:text-white">{myScore}%</p>
-            <p className="text-xs text-slate-500 mt-0.5">Complété</p>
+            <p className="text-xs text-slate-500 mt-0.5">{t.completed_score}</p>
           </div>
           <div className="text-center p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
             <p className="text-2xl font-bold text-slate-900 dark:text-white">{my_taches.a_faire}</p>
-            <p className="text-xs text-slate-500 mt-0.5">À faire</p>
+            <p className="text-xs text-slate-500 mt-0.5">{t.to_do}</p>
           </div>
           <div className="text-center p-3 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30">
             <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{my_taches.en_cours}</p>
-            <p className="text-xs text-slate-500 mt-0.5">En cours</p>
+            <p className="text-xs text-slate-500 mt-0.5">{t.in_progress}</p>
           </div>
           <div className="text-center p-3 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30">
             <p className="text-2xl font-bold text-red-600 dark:text-red-400">{my_taches.bloque}</p>
-            <p className="text-xs text-slate-500 mt-0.5">Bloqué</p>
+            <p className="text-xs text-slate-500 mt-0.5">{t.blocked}</p>
           </div>
           <div className="text-center p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/30">
             <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{my_taches.termine}</p>
-            <p className="text-xs text-slate-500 mt-0.5">Terminées</p>
+            <p className="text-xs text-slate-500 mt-0.5">{t.done}</p>
           </div>
         </div>
       </div>
 
       {/* Avancement des projets gérés */}
       <div className="bg-white dark:bg-[#0A0A0A] border border-slate-200/60 dark:border-white/10 rounded-2xl p-4 sm:p-6 md:p-8 shadow-sm">
-        <h3 className="text-slate-900 dark:text-white font-semibold text-base sm:text-lg mb-4 sm:mb-6">Avancement de vos projets</h3>
+        <h3 className="text-slate-900 dark:text-white font-semibold text-base sm:text-lg mb-4 sm:mb-6">{t.prog_your_proj}</h3>
         <div className="space-y-5">
           {projects.length === 0 ? (
-            <p className="text-slate-500 text-sm">Aucun projet géré.</p>
+            <p className="text-slate-500 text-sm">{t.no_proj_man}</p>
           ) : (
             projects.map((proj, i) => (
               <div key={proj.id}>
@@ -357,7 +357,7 @@ function ManagerDashboard({ stats, projects }) {
                         ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                         : 'bg-slate-200 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700'
                     }`}>
-                      {proj.statut === 'termine' ? 'Terminé' : proj.statut === 'en_cours' ? 'En cours' : 'En attente'}
+                      {proj.statut === 'termine' ? t.status_done : proj.statut === 'en_cours' ? t.status_prog : t.status_wait}
                     </span>
                   </div>
                   <span className="text-slate-600 dark:text-slate-300 text-sm font-bold shrink-0 ml-2">{proj.progress || 0}%</span>
@@ -375,7 +375,7 @@ function ManagerDashboard({ stats, projects }) {
         <div className="bg-white dark:bg-[#0A0A0A] border border-red-500/20 dark:border-red-900/30 rounded-2xl p-6 shadow-sm">
           <h3 className="text-slate-900 dark:text-white font-semibold text-lg mb-4 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            Échéances urgentes — Équipe
+            {t.urgent_team}
           </h3>
           <div className="space-y-2">
             {urgent_tasks.map(t => {
@@ -388,7 +388,7 @@ function ManagerDashboard({ stats, projects }) {
                     {t.assignee_name && <span className="text-xs text-slate-400 shrink-0">→ {t.assignee_name}</span>}
                   </div>
                   <span className="text-red-400 text-xs font-bold shrink-0">
-                    {d < 0 ? `${Math.abs(d)}j retard` : d === 0 ? 'Auj.' : `${d}j`}
+                    {d < 0 ? `${Math.abs(d)}${t.days} ${t.late}` : d === 0 ? t.today : `${d}${t.days}`}
                   </span>
                 </div>
               );
@@ -397,7 +397,7 @@ function ManagerDashboard({ stats, projects }) {
         </div>
       )}
 
-      <PlanningWidget events={upcoming_events} />
+      <PlanningWidget events={upcoming_events} t={t} />
     </div>
   );
 }
@@ -438,11 +438,11 @@ function UserDashboard({ stats }) {
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-3xl sm:text-4xl font-bold tracking-tighter text-slate-900 dark:text-white">{myScore}%</span>
-              <span className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold tracking-wider mt-0.5 sm:mt-1">Complété</span>
+              <span className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold tracking-wider mt-0.5 sm:mt-1">{t.completed_score}</span>
             </div>
           </div>
           <p className="text-slate-900 dark:text-white font-semibold text-sm sm:text-base mt-3 sm:mt-4 text-center">
-            {myScore === 100 ? '🎉 Parfait !' : myScore >= 60 ? '👍 Bon rythme' : '⚡ Quelques retards'}
+            {myScore === 100 ? t.perfect : myScore >= 60 ? t.good_pace : t.some_delays}
           </p>
           <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs text-center mt-0.5 sm:mt-1">
             {taches.termine} / {taches.total} tâche{taches.total !== 1 ? 's' : ''} terminée{taches.total !== 1 ? 's' : ''}
@@ -454,15 +454,15 @@ function UserDashboard({ stats }) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="bg-white dark:bg-[#0A0A0A] border border-slate-200/60 dark:border-white/10 rounded-2xl p-3 sm:p-5 text-center shadow-sm hover:shadow-md transition-shadow">
               <p className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{taches.a_faire}</p>
-              <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-medium">À faire</p>
+              <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-medium">{t.to_do}</p>
             </div>
             <div className="bg-white dark:bg-[#0A0A0A] border border-amber-500/30 dark:border-amber-500/20 rounded-2xl p-3 sm:p-5 text-center shadow-sm shadow-amber-500/5 hover:shadow-md transition-shadow">
               <p className="text-2xl sm:text-3xl font-bold tracking-tight text-amber-500 dark:text-amber-400">{taches.en_cours}</p>
-              <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-medium">En cours</p>
+              <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-medium">{t.in_progress}</p>
             </div>
             <div className="bg-white dark:bg-[#0A0A0A] border border-emerald-500/30 dark:border-emerald-500/20 rounded-2xl p-3 sm:p-5 text-center shadow-sm shadow-emerald-500/5 hover:shadow-md transition-shadow">
               <p className="text-2xl sm:text-3xl font-bold tracking-tight text-emerald-500 dark:text-emerald-400">{taches.termine}</p>
-              <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-medium">Terminées</p>
+              <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-medium">{t.done}</p>
             </div>
           </div>
 
@@ -481,7 +481,7 @@ function UserDashboard({ stats }) {
                         <span className="text-slate-900 dark:text-white text-sm truncate">{t.titre}</span>
                       </div>
                       <span className="text-red-400 text-xs font-bold shrink-0">
-                        {d < 0 ? `${Math.abs(d)}j de retard` : d === 0 ? 'Auj.' : `${d}j`}
+                        {d < 0 ? `${Math.abs(d)}${t.days} ${t.late}` : d === 0 ? t.today : `${d}${t.days}`}
                       </span>
                     </div>
                   );
@@ -491,7 +491,7 @@ function UserDashboard({ stats }) {
           </div>
         </div>
       </div>
-      <PlanningWidget events={upcoming_events} />
+      <PlanningWidget events={upcoming_events} t={t} />
     </div>
   );
 }
@@ -524,7 +524,7 @@ function DashboardSection() {
   }, [currentUser, loadStats]);
 
   if (!currentUser) {
-    return <div className="p-8 text-center text-gray-500">Chargement de votre espace...</div>;
+    return <div className="p-8 text-center text-gray-500">{t.loading_space}</div>;
   }
 
   // Filtrage des projets côté client pour l'affichage des barres de progression
@@ -575,7 +575,7 @@ function DashboardSection() {
           <UserDashboard stats={dashStats} />
         )
       ) : (
-        <p className="text-slate-500 text-sm text-center py-12">Impossible de charger les statistiques.</p>
+        <p className="text-slate-500 text-sm text-center py-12">{t.err_stats}</p>
       )}
     </section>
   );

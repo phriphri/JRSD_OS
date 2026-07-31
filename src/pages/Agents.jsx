@@ -3,6 +3,69 @@ import { ChevronDown, Copy, KeyRound, Search, UserPlus, X, Mail, Briefcase, User
 import { api } from '../services/api';
 import { useGlobalStore } from '../store/globalStore';
 
+const TRANSLATIONS = {
+  FR: {
+    loading: 'Chargement...',
+    roles: { admin: 'Admin', manager: 'Manager', employe: 'Employé' },
+    no_func: 'Sans fonction',
+    status: { actif: 'Actif', suspendu: 'Suspendu' },
+    projects: 'projets',
+    tasks: 'tâches',
+    see_profile: 'Voir profil',
+    change_role: 'Changer le rôle',
+    suspend: 'Suspendre',
+    reactivate: 'Réactiver',
+    agents: 'Agents',
+    subtitle: 'Gérez votre équipe, les rôles et les accès de votre workspace',
+    stats: { total: 'Collaborateurs', actifs: 'Agents actifs', managers: 'Managers', admins: 'Admins' },
+    search: 'Rechercher un collaborateur par nom, équipe, rôle...',
+    tabs: { collab: 'Collaborateurs', invites: 'Invitations' },
+    invite_title: 'Invitez de nouveaux membres',
+    invite_subtitle: 'Générez une clé pour permettre à vos collaborateurs de rejoindre l\'organisation.',
+    gen_key: 'Générer une nouvelle clé',
+    copy: 'Copier',
+    copied: 'Copié',
+    registration_link: 'Lien d\'inscription',
+    send_link: 'Envoyez ce lien ainsi que la clé de sécurité pour l\'inscription.',
+    copy_link: 'Copier le lien',
+    no_agents: 'Aucun collaborateur trouvé',
+    all_collab: 'Tous les collaborateurs',
+    err_gen: 'Erreur lors de la génération.',
+    cant_download_cv: 'Impossible de télécharger le CV.',
+    cant_load_cv: 'Impossible de charger le CV.'
+  },
+  EN: {
+    loading: 'Loading...',
+    roles: { admin: 'Admin', manager: 'Manager', employe: 'Employee' },
+    no_func: 'No function',
+    status: { actif: 'Active', suspendu: 'Suspended' },
+    projects: 'projects',
+    tasks: 'tasks',
+    see_profile: 'See profile',
+    change_role: 'Change role',
+    suspend: 'Suspend',
+    reactivate: 'Reactivate',
+    agents: 'Agents',
+    subtitle: 'Manage your team, roles and workspace access',
+    stats: { total: 'Collaborators', actifs: 'Active agents', managers: 'Managers', admins: 'Admins' },
+    search: 'Search a collaborator by name, team, role...',
+    tabs: { collab: 'Collaborators', invites: 'Invitations' },
+    invite_title: 'Invite new members',
+    invite_subtitle: 'Generate a key to allow your collaborators to join the organization.',
+    gen_key: 'Generate a new key',
+    copy: 'Copy',
+    copied: 'Copied',
+    registration_link: 'Registration link',
+    send_link: 'Send this link along with the security key for registration.',
+    copy_link: 'Copy link',
+    no_agents: 'No collaborator found',
+    all_collab: 'All collaborators',
+    err_gen: 'Error generating.',
+    cant_download_cv: 'Cannot download CV.',
+    cant_load_cv: 'Cannot load CV.'
+  }
+};
+
 /* ─── helpers ────────────────────────────────────────────────── */
 function initialsFromName(name) {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
@@ -11,9 +74,11 @@ function initialsFromName(name) {
 }
 
 function roleConfig(role) {
-  if (role === 'admin')   return { label: 'Admin',   color: '#f43f5e', bg: 'rgba(244,63,94,.10)', gradient: 'linear-gradient(135deg, #f43f5e, #e11d48)' };
-  if (role === 'manager') return { label: 'Manager', color: '#6366f1', bg: 'rgba(99,102,241,.10)', gradient: 'linear-gradient(135deg, #6366f1, #4f46e5)' };
-  return                         { label: 'Employé', color: '#10b981', bg: 'rgba(16,185,129,.10)', gradient: 'linear-gradient(135deg, #10b981, #059669)' };
+  const { language } = useGlobalStore.getState();
+  const t = TRANSLATIONS[language === 'EN' ? 'EN' : 'FR'];
+  if (role === 'admin')   return { label: t.roles.admin,   color: '#f43f5e', bg: 'rgba(244,63,94,.10)', gradient: 'linear-gradient(135deg, #f43f5e, #e11d48)' };
+  if (role === 'manager') return { label: t.roles.manager, color: '#6366f1', bg: 'rgba(99,102,241,.10)', gradient: 'linear-gradient(135deg, #6366f1, #4f46e5)' };
+  return                         { label: t.roles.employe, color: '#10b981', bg: 'rgba(16,185,129,.10)', gradient: 'linear-gradient(135deg, #10b981, #059669)' };
 }
 
 function avatarHue(name) {
@@ -94,6 +159,8 @@ function StatusDot({ statut, size = 7 }) {
 /* ─── KPI Icon ───────────────/* ─── Agent Card (enriched) ──────────────────────────────────── */
 function AgentCard({ agent, onClick, isLast }) {
   const rc = roleConfig(agent.role);
+  const { language } = useGlobalStore();
+  const t = TRANSLATIONS[language === 'EN' ? 'EN' : 'FR'];
   const photoUrl = agent.avatar_url || agent.avatarUrl || null;
   const [hovered, setHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -138,7 +205,7 @@ function AgentCard({ agent, onClick, isLast }) {
             textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             fontWeight: 500,
           }}>
-            {agent.fonction || 'Sans fonction'}
+            {agent.fonction || t.no_func}
           </p>
         </div>
       </div>
@@ -168,7 +235,7 @@ function AgentCard({ agent, onClick, isLast }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <StatusDot statut={agent.statut} />
           <span style={{ fontSize: 10, color: 'var(--ac-text-muted)', fontWeight: 500 }}>
-            {agent.statut === 'actif' ? 'Actif' : 'Suspendu'}
+            {agent.statut === 'actif' ? t.status.actif : t.status.suspendu}
           </span>
         </div>
       </div>
@@ -188,14 +255,14 @@ function AgentCard({ agent, onClick, isLast }) {
             <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ac-text-primary)' }}>
               {projectCount}
             </span>
-            <span style={{ fontSize: 10, color: 'var(--ac-text-muted)' }}>projets</span>
+            <span style={{ fontSize: 10, color: 'var(--ac-text-muted)' }}>{t.projects}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <CheckSquare size={11} style={{ color: 'var(--ac-text-muted)' }} />
             <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ac-text-primary)' }}>
               {taskCount}
             </span>
-            <span style={{ fontSize: 10, color: 'var(--ac-text-muted)' }}>tâches</span>
+            <span style={{ fontSize: 10, color: 'var(--ac-text-muted)' }}>{t.tasks}</span>
           </div>
         </div>
 
@@ -235,7 +302,7 @@ function AgentCard({ agent, onClick, isLast }) {
               zIndex: 20,
             }}
           >
-            {[{ label: 'Voir profil', action: onClick }].map(({ label, action }) => (
+            {[{ label: t.see_profile, action: onClick }].map(({ label, action }) => (
               <button
                 key={label}
                 type="button"
@@ -260,6 +327,8 @@ function AgentCard({ agent, onClick, isLast }) {
 
 /* ─── Profile Modal ──────────────────────────────────────────── */
 function AgentModal({ agent, currentUser, onClose, onChangeRole, onToggleStatus, busyId, roleMenuOpen, setRoleMenuOpen, onPreviewCv }) {
+  const { language } = useGlobalStore();
+  const t = TRANSLATIONS[language === 'EN' ? 'EN' : 'FR'];
   if (!agent) return null;
   const rc = roleConfig(agent.role);
   const photoUrl = agent.avatar_url || agent.avatarUrl || null;
@@ -352,7 +421,7 @@ function AgentModal({ agent, currentUser, onClose, onChangeRole, onToggleStatus,
                 </span>
                 <StatusDot statut={agent.statut} />
                 <span style={{ fontSize: 11, color: 'var(--ac-text-muted)' }}>
-                  {agent.statut === 'actif' ? 'Actif' : 'Suspendu'}
+                  {agent.statut === 'actif' ? t.status.actif : t.status.suspendu}
                 </span>
               </div>
             </div>
@@ -370,7 +439,7 @@ function AgentModal({ agent, currentUser, onClose, onChangeRole, onToggleStatus,
               { icon: <Mail size={13} />, label: 'Email', value: agent.email },
               { icon: <Briefcase size={13} />, label: 'Fonction', value: agent.fonction || '—' },
               { icon: <Users size={13} />, label: 'Équipe', value: agent.team?.nom || '—' },
-              { icon: <Shield size={13} />, label: 'Projets actifs', value: projectCount > 0 ? `${projectCount} projet${projectCount > 1 ? 's' : ''}` : 'Aucun' },
+              { icon: <Shield size={13} />, label: 'Projets actifs', value: projectCount > 0 ? `${projectCount} ${t.projects}` : '0' },
             ].map(({ icon, label, value }, i, arr) => (
               <div
                 key={label}
@@ -462,7 +531,7 @@ function AgentModal({ agent, currentUser, onClose, onChangeRole, onToggleStatus,
                         a.click();
                         URL.revokeObjectURL(url);
                       })
-                      .catch(() => alert('Impossible de télécharger le CV.'));
+                      .catch(() => alert(t.cant_download_cv));
                   }}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -583,6 +652,8 @@ function AgentModal({ agent, currentUser, onClose, onChangeRole, onToggleStatus,
 
 /* ══ Main page ═══════════════════════════════════════════════════ */
 export default function Agents() {
+  const { language } = useGlobalStore();
+  const t = TRANSLATIONS[language === 'EN' ? 'EN' : 'FR'];
   const {
     currentUser,
     adminUsers,
@@ -593,7 +664,7 @@ export default function Agents() {
   } = useGlobalStore();
 
   if (!currentUser) {
-    return <div className="p-8 text-center text-gray-500">Chargement...</div>;
+    return <div className="p-8 text-center text-gray-500">{t.loading}</div>;
   }
 
   const [previewCvUrl, setPreviewCvUrl] = useState(null);
@@ -648,7 +719,7 @@ export default function Agents() {
   const handleGenerate = async () => {
     setError('');
     const res = await generateInvitationKey();
-    if (!res?.success) setError(res?.message || 'Erreur lors de la génération.');
+    if (!res?.success) setError(res?.message || t.err_gen);
   };
 
   const handleCopyKey = async () => {
@@ -695,15 +766,15 @@ export default function Agents() {
       setPreviewCvUrl(url);
       setPreviewCvName(agent.nom_prenom);
     } catch (err) {
-      alert('Impossible de charger le CV.');
+      alert(t.cant_load_cv);
     }
   };
 
   if (!isAdminOnly) return null;
 
   const tabItems = [
-    { id: 'collaborateurs', label: 'Collaborateurs', count: adminUsers.length },
-    { id: 'invitations', label: 'Invitations', count: null },
+    { id: 'collaborateurs', label: t.stats.total, count: adminUsers.length },
+    { id: 'invitations', label: t.tabs.invites, count: null },
   ];
 
   return (
@@ -776,10 +847,10 @@ export default function Agents() {
           gap: 12, marginBottom: 28,
         }}>
           {[
-            { label: 'Collaborateurs', value: stats.total, color: '#6366f1', type: 'total' },
-            { label: 'Agents actifs',  value: stats.actifs, color: '#10b981', type: 'actifs' },
-            { label: 'Managers',       value: stats.managers, color: '#8b5cf6', type: 'managers' },
-            { label: 'Admins',         value: stats.admins, color: '#f43f5e', type: 'admins' },
+            { label: t.stats.total, value: stats.total, color: '#6366f1', type: 'total' },
+            { label: t.stats.actifs,  value: stats.actifs, color: '#10b981', type: 'actifs' },
+            { label: t.stats.managers,       value: stats.managers, color: '#8b5cf6', type: 'managers' },
+            { label: t.stats.admins,         value: stats.admins, color: '#f43f5e', type: 'admins' },
           ].map(({ label, value, color, type }) => (
             <div
               key={label}

@@ -2,11 +2,46 @@ import React, { useEffect, useState } from 'react';
 import { useGlobalStore } from '../store/globalStore';
 
 export const TASK_COLUMNS = [
-  { id: 'a_faire', title: 'À faire', dot: 'bg-slate-400 dark:bg-slate-500', bg: 'bg-slate-50 dark:bg-slate-900/50' },
-  { id: 'en_cours', title: 'En cours', dot: 'bg-indigo-500', bg: 'bg-indigo-50/50 dark:bg-indigo-900/10' },
-  { id: 'bloque', title: 'Bloqué', dot: 'bg-red-500', bg: 'bg-red-50/50 dark:bg-red-900/10' },
-  { id: 'termine', title: 'Terminé', dot: 'bg-emerald-500', bg: 'bg-emerald-50/50 dark:bg-emerald-900/10' },
+  { id: 'a_faire', dot: 'bg-slate-400 dark:bg-slate-500', bg: 'bg-slate-50 dark:bg-slate-900/50' },
+  { id: 'en_cours', dot: 'bg-indigo-500', bg: 'bg-indigo-50/50 dark:bg-indigo-900/10' },
+  { id: 'bloque', dot: 'bg-red-500', bg: 'bg-red-50/50 dark:bg-red-900/10' },
+  { id: 'termine', dot: 'bg-emerald-500', bg: 'bg-emerald-50/50 dark:bg-emerald-900/10' },
 ];
+
+const TRANSLATIONS = {
+  FR: {
+    title: "Tableau Kanban",
+    subtitleAdmin: "Vue globale — toutes les tâches",
+    subtitleManager: "Vue équipe — projets gérés",
+    subtitleUser: "Vos tâches en colonnes",
+    loading: "Chargement du tableau…",
+    empty: "Aucune tâche",
+    overdue: "RETARD",
+    noProject: "Hors Projet",
+    columns: {
+      a_faire: "À faire",
+      en_cours: "En cours",
+      bloque: "Bloqué",
+      termine: "Terminé"
+    }
+  },
+  EN: {
+    title: "Kanban Board",
+    subtitleAdmin: "Global view — all tasks",
+    subtitleManager: "Team view — managed projects",
+    subtitleUser: "Your tasks in columns",
+    loading: "Loading board…",
+    empty: "No tasks",
+    overdue: "OVERDUE",
+    noProject: "No Project",
+    columns: {
+      a_faire: "To Do",
+      en_cours: "In Progress",
+      bloque: "Blocked",
+      termine: "Done"
+    }
+  }
+};
 
 function isOverdue(task) {
   if (!task.deadline && !task.dueDate) return false;
@@ -25,13 +60,15 @@ function formatDeadline(task) {
 }
 
 export default function Kanban() {
-  const { kanbanBoard, fetchKanbanBoard, moveTask, currentUser } = useGlobalStore();
+  const { kanbanBoard, fetchKanbanBoard, moveTask, currentUser, language } = useGlobalStore();
   const [activeDragId, setActiveDragId] = useState(null);
   const [dragOverCol, setDragOverCol] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isTouch, setIsTouch] = useState(false);
 
   useEffect(() => {
+    setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0);
     const load = async () => {
       setLoading(true);
       await fetchKanbanBoard();
@@ -44,9 +81,11 @@ export default function Kanban() {
     return <div className="p-8 text-center text-gray-500">Chargement...</div>;
   }
 
+  const t = TRANSLATIONS[language === 'EN' ? 'EN' : 'FR'];
+
   const tasksByStatus = TASK_COLUMNS.reduce((acc, col) => {
     acc[col.id] = kanbanBoard
-      .filter((t) => (t.statut || t.status) === col.id)
+      .filter((task) => (task.statut || task.status) === col.id)
       .sort((a, b) => {
         const da = a.deadline || a.dueDate;
         const db = b.deadline || b.dueDate;
@@ -84,7 +123,7 @@ export default function Kanban() {
     const taskId = Number(e.dataTransfer.getData('text/plain'));
     setDragOverCol(null);
     setActiveDragId(null);
-    const task = kanbanBoard.find((t) => t.id === taskId);
+    const task = kanbanBoard.find((task) => task.id === taskId);
     if (!task || (task.statut || task.status) === newStatus) return;
     setUpdatingId(taskId);
     await moveTask(taskId, newStatus);
@@ -100,22 +139,22 @@ export default function Kanban() {
 
   const role = currentUser?.role?.toLowerCase();
   const subtitle = role === 'admin'
-    ? 'Vue globale — toutes les tâches'
+    ? t.subtitleAdmin
     : role === 'manager'
-      ? 'Vue équipe — projets gérés'
-      : 'Vos tâches en colonnes';
+      ? t.subtitleManager
+      : t.subtitleUser;
 
   return (
     <section id="kanban" className="scroll-mt-8 mb-12">
       <div className="mb-6">
         <p className="text-gray-500 dark:text-gray-400 text-sm mb-1">{subtitle}</p>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Tableau Kanban</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{t.title}</h2>
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-500 py-12 text-center">Chargement du tableau…</p>
+        <p className="text-sm text-gray-500 py-12 text-center">{t.loading}</p>
       ) : (
-      <div className="flex overflow-x-auto whitespace-nowrap scrollbar-thin pb-6 gap-4 snap-x w-full">
+      <div className="flex overflow-x-auto overscroll-x-contain scrollbar-thin pb-6 gap-4 w-full text-left" style={{ WebkitOverflowScrolling: 'touch' }}>
         {TASK_COLUMNS.map((col) => {
           const colTasks = tasksByStatus[col.id];
           const isOver = dragOverCol === col.id;
@@ -126,7 +165,7 @@ export default function Kanban() {
               onDrop={(e) => onDrop(e, col.id)}
               onDragOver={(e) => onDragOver(e, col.id)}
               onDragLeave={(e) => onDragLeave(e, col.id)}
-              className={`flex flex-col min-w-[260px] sm:min-w-[280px] max-w-[300px] sm:max-w-[320px] flex-1 snap-start shrink-0 rounded-2xl transition-all duration-200 ${
+              className={`flex flex-col whitespace-normal min-w-[260px] sm:min-w-[280px] max-w-[300px] sm:max-w-[320px] flex-1 shrink-0 rounded-2xl transition-all duration-200 ${
                 isOver
                   ? 'bg-indigo-50/50 dark:bg-indigo-900/10 ring-2 ring-indigo-500/30'
                   : `${col.bg} border border-gray-200 dark:border-gray-700`
@@ -135,7 +174,7 @@ export default function Kanban() {
               <div className="flex items-center justify-between p-4 border-b border-gray-200/50 dark:border-gray-700/50">
                 <div className="flex items-center gap-2.5">
                   <span className={`w-2.5 h-2.5 rounded-full ${col.dot}`} />
-                  <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200">{col.title}</h3>
+                  <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200">{t.columns[col.id]}</h3>
                 </div>
                 <span className="text-xs font-semibold bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2.5 py-0.5 rounded-full shadow-sm">
                   {colTasks.length}
@@ -144,13 +183,13 @@ export default function Kanban() {
 
               <div className="flex-1 p-3 space-y-3 min-h-[320px] overflow-y-auto hide-scrollbar">
                 {colTasks.length === 0 && (
-                  <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-8">Aucune tâche</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-8">{t.empty}</p>
                 )}
                 {colTasks.map((task) => {
                   const overdue = isOverdue(task);
                   const isDragging = activeDragId === task.id;
                   const isUpdating = updatingId === task.id;
-                  const isDraggable = !isUpdating && (
+                  const isDraggable = !isTouch && !isUpdating && (
                     role === 'admin' || 
                     role === 'manager' || 
                     Number(task.assigneeId) === Number(currentUser?.id)
@@ -167,7 +206,7 @@ export default function Kanban() {
                       onDragStart={(e) => isDraggable && onDragStart(e, task.id)}
                       onDragEnd={onDragEnd}
                       className={`group relative bg-white dark:bg-gray-800 border rounded-lg p-3 transition-all duration-200 ${
-                        isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed'
+                        isDraggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
                       } ${
                         isDragging
                           ? 'opacity-40 scale-95 shadow-none border-indigo-500/50'
@@ -180,7 +219,7 @@ export default function Kanban() {
                             ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 border border-blue-100 dark:border-blue-800/40' 
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
                         }`}>
-                          {task.projectName || 'Hors Projet'}
+                          {task.projectName || t.noProject}
                         </span>
                       </div>
 
@@ -205,7 +244,7 @@ export default function Kanban() {
                           )}
                           {overdue && (
                             <span className="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.2 bg-red-500/10 text-red-500 border border-red-500/20 rounded">
-                              RETARD
+                              {t.overdue}
                             </span>
                           )}
                         </div>
@@ -227,7 +266,7 @@ export default function Kanban() {
                             onClick={() => handleStatusClick(task, c.id)}
                             className="flex-1 text-[9px] font-semibold py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
                           >
-                            → {c.title}
+                            → {t.columns[c.id]}
                           </button>
                         ))}
                       </div>

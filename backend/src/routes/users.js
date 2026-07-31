@@ -5,53 +5,52 @@ const { body, param, validationResult } = require('express-validator');
 const { protect, adminOnly } = require('../middleware/auth');
 const { pool } = require('../config/db');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const { uploadToCloudinary, deleteFromCloudinary } = require('../config/cloudinary');
 
-/* ── Avatar upload ────────────────────────────────────────────── */
-const avatarStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '../../uploads');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `avatar_${req.userId}_${Date.now()}${ext}`);
-  }
-});
-const upload = multer({
-  storage: avatarStorage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) cb(null, true);
-    else cb(new Error('Format non supporté.'));
-  }
-});
-
-/* ── CV upload ────────────────────────────────────────────────── */
-const cvStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '../../uploads/cv');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `cv_${req.userId}_${Date.now()}${ext}`);
-  }
-});
-const uploadCv = multer({
-  storage: cvStorage,
+/* ── Multer Memory Storage ────────────────────────────────────── */
+const uploadMemory = multer({
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
-  fileFilter: (req, file, cb) => {
-    const allowed = ['application/pdf', 'image/png', 'image/jpeg'];
-    if (allowed.includes(file.mimetype)) cb(null, true);
-    else cb(new Error('Format non supporté. Utilisez PDF ou PNG.'));
-  }
 });
 
 const router = express.Router();
+let schemaReady = false;
+
+async function ensureUserSchema() {
+  if (schemaReady) return;
+  const dbName = process.env.DB_NAME || 'jrsd_os';
+
+  // Ensure columns avatar_public_id and cv_public_id exist
+  const [avatarCols] = await pool.execute(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'users' AND COLUMN_NAME = 'avatar_public_id'`,
+    [dbName]
+  );
+  if (avatarCols.length === 0) {
+    await pool.execute(`ALTER TABLE users ADD COLUMN avatar_public_id VARCHAR(255) DEFAULT NULL AFTER avatar`);
+  }
+
+  const [cvCols] = await pool.execute(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'users' AND COLUMN_NAME = 'cv_public_id'`,
+    [dbName]
+  );
+  if (cvCols.length === 0) {
+    await pool.execute(`ALTER TABLE users ADD COLUMN cv_public_id VARCHAR(255) DEFAULT NULL AFTER cv_url`);
+  }
+
+  schemaReady = true;
+}
+
+router.use(async (_req, res, next) => {
+  try {
+    await ensureUserSchema();
+    next();
+  } catch (err) {
+    console.error('[users ensureUserSchema]', err.message);
+    res.status(500).json({ success: false, message: 'Erreur initialisation schéma utilisateurs.' });
+  }
+});
 
 function validateRequest(req, res, next) {
   const errors = validationResult(req);
@@ -76,10 +75,10 @@ router.get('/managers', protect, async (_req, res) => {
 });
 
 /** GET /api/users - Fetch all users */
-router.get('/', protect, async (req, res) => {
+router.get('/', protect, async (_req, res) => {
   try {
     const [rows] = await pool.execute(
-      `SELECT id, nom_prenom, email, fonction, role, avatar, created_at FROM users ORDER BY created_at ASC`
+      `SELECT id, nom_prenom, email, fonction, role, avatar, avatar_public_id, cv_url, cv_public_id, created_at FROM users ORDER BY created_at ASC`
     );
     res.json({ success: true, users: rows });
   } catch (err) {
@@ -119,36 +118,33 @@ router.put('/:id/role',
 });
 
 /** PUT /api/users/profile - Update user profile (Self) */
-router.put('/profile', protect, upload.single('avatar'), async (req, res) => {
+router.put('/profile', protect, uploadMemory.single('avatar'), async (req, res) => {
   try {
     const { nom_prenom, email, deleteAvatar } = req.body;
     let query = 'UPDATE users SET nom_prenom = ?, email = ?';
     let params = [nom_prenom, email];
 
-    // Get current user avatar
-    const [rows] = await pool.execute('SELECT avatar FROM users WHERE id = ?', [req.userId]);
-    const currentAvatar = rows[0]?.avatar;
+    const [rows] = await pool.execute('SELECT avatar, avatar_public_id FROM users WHERE id = ?', [req.userId]);
+    const userRow = rows[0];
 
     if (req.file) {
-      // Delete old avatar if any
-      if (currentAvatar) {
-        const oldPath = path.join(__dirname, '../../', currentAvatar.replace(/^\//, ''));
-        if (fs.existsSync(oldPath)) {
-          try { fs.unlinkSync(oldPath); } catch {}
-        }
+      if (userRow?.avatar_public_id) {
+        await deleteFromCloudinary(userRow.avatar_public_id, 'image');
       }
-      const avatarUrl = `/uploads/${req.file.filename}`;
-      query += ', avatar = ?';
-      params.push(avatarUrl);
+
+      const cloudResult = await uploadToCloudinary(req.file.buffer, {
+        folder: 'jrsd_os/avatars',
+        resource_type: 'image',
+        mimetype: req.file.mimetype,
+      });
+
+      query += ', avatar = ?, avatar_public_id = ?';
+      params.push(cloudResult.secure_url, cloudResult.public_id);
     } else if (deleteAvatar === 'true' || deleteAvatar === true) {
-      // Delete old avatar if any
-      if (currentAvatar) {
-        const oldPath = path.join(__dirname, '../../', currentAvatar.replace(/^\//, ''));
-        if (fs.existsSync(oldPath)) {
-          try { fs.unlinkSync(oldPath); } catch {}
-        }
+      if (userRow?.avatar_public_id) {
+        await deleteFromCloudinary(userRow.avatar_public_id, 'image');
       }
-      query += ', avatar = NULL';
+      query += ', avatar = NULL, avatar_public_id = NULL';
     }
 
     query += ' WHERE id = ?';
@@ -164,7 +160,7 @@ router.put('/profile', protect, upload.single('avatar'), async (req, res) => {
 });
 
 /** POST /api/users/profile/cv — Upload / replace CV (non-admin only) */
-router.post('/profile/cv', protect, uploadCv.single('cv'), async (req, res) => {
+router.post('/profile/cv', protect, uploadMemory.single('cv'), async (req, res) => {
   try {
     const role = req.userRole;
     if (role === 'admin') {
@@ -175,23 +171,27 @@ router.post('/profile/cv', protect, uploadCv.single('cv'), async (req, res) => {
       return res.status(400).json({ success: false, message: 'Aucun fichier fourni.' });
     }
 
-    // Delete old CV file if it exists
-    const [rows] = await pool.execute('SELECT cv_url FROM users WHERE id = ?', [req.userId]);
-    const oldCv = rows[0]?.cv_url;
-    if (oldCv) {
-      const oldPath = path.join(__dirname, '../../', oldCv.replace(/^\//, ''));
-      if (fs.existsSync(oldPath)) {
-        try { fs.unlinkSync(oldPath); } catch {}
-      }
+    const [rows] = await pool.execute('SELECT cv_url, cv_public_id FROM users WHERE id = ?', [req.userId]);
+    const userRow = rows[0];
+    if (userRow?.cv_public_id) {
+      await deleteFromCloudinary(userRow.cv_public_id, 'auto');
     }
 
-    const cvUrl = `/uploads/cv/${req.file.filename}`;
-    await pool.execute('UPDATE users SET cv_url = ? WHERE id = ?', [cvUrl, req.userId]);
+    const cloudResult = await uploadToCloudinary(req.file.buffer, {
+      folder: 'jrsd_os/cv',
+      resource_type: 'auto',
+      mimetype: req.file.mimetype,
+    });
+
+    await pool.execute(
+      'UPDATE users SET cv_url = ?, cv_public_id = ? WHERE id = ?',
+      [cloudResult.secure_url, cloudResult.public_id, req.userId]
+    );
 
     res.json({
       success: true,
       message: 'CV enregistré avec succès.',
-      cv_url: cvUrl,
+      cv_url: cloudResult.secure_url,
       cv_filename: req.file.originalname,
     });
   } catch (err) {
@@ -203,17 +203,14 @@ router.post('/profile/cv', protect, uploadCv.single('cv'), async (req, res) => {
 /** DELETE /api/users/profile/cv — Remove CV (self) */
 router.delete('/profile/cv', protect, async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT cv_url FROM users WHERE id = ?', [req.userId]);
-    const cvUrl = rows[0]?.cv_url;
+    const [rows] = await pool.execute('SELECT cv_url, cv_public_id FROM users WHERE id = ?', [req.userId]);
+    const userRow = rows[0];
 
-    if (cvUrl) {
-      const filePath = path.join(__dirname, '../../', cvUrl.replace(/^\//, ''));
-      if (fs.existsSync(filePath)) {
-        try { fs.unlinkSync(filePath); } catch {}
-      }
+    if (userRow?.cv_public_id) {
+      await deleteFromCloudinary(userRow.cv_public_id, 'auto');
     }
 
-    await pool.execute('UPDATE users SET cv_url = NULL WHERE id = ?', [req.userId]);
+    await pool.execute('UPDATE users SET cv_url = NULL, cv_public_id = NULL WHERE id = ?', [req.userId]);
 
     res.json({ success: true, message: 'CV supprimé.' });
   } catch (err) {
@@ -226,35 +223,16 @@ router.delete('/profile/cv', protect, async (req, res) => {
 router.get('/:id/cv', protect, adminOnly, async (req, res) => {
   try {
     const { id } = req.params;
-    const { preview } = req.query;
     const [rows] = await pool.execute('SELECT nom_prenom, cv_url FROM users WHERE id = ?', [id]);
 
     if (!rows.length || !rows[0].cv_url) {
       return res.status(404).json({ success: false, message: 'Aucun CV disponible pour cet utilisateur.' });
     }
 
-    const { nom_prenom, cv_url } = rows[0];
-    const filePath = path.join(__dirname, '../../', cv_url.replace(/^\//, ''));
-
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, message: 'Fichier introuvable.' });
-    }
-
-    const ext = path.extname(filePath).toLowerCase();
-
-    if (preview === 'true') {
-      let contentType = 'application/octet-stream';
-      if (ext === '.pdf') contentType = 'application/pdf';
-      else if (ext === '.png') contentType = 'image/png';
-      else if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
-
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Content-Disposition', 'inline');
-      return res.sendFile(filePath);
-    }
-
-    const safeName = nom_prenom.replace(/\s+/g, '_');
-    res.download(filePath, `CV_${safeName}${ext}`);
+    const { cv_url } = rows[0];
+    
+    // Redirect directly to the Cloudinary URL
+    return res.redirect(cv_url);
   } catch (err) {
     console.error('[GET /api/users/:id/cv]', err.message);
     res.status(500).json({ success: false, message: 'Erreur serveur.' });

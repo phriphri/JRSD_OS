@@ -22,7 +22,7 @@ export default function ProfileModal({ isOpen, onClose }) {
   });
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(
-    currentUser?.avatar ? `http://localhost:3001${currentUser.avatar}` : null
+    currentUser?.avatar ? (currentUser.avatar.startsWith('http') || currentUser.avatar.startsWith('data:') ? currentUser.avatar : `http://localhost:3001${currentUser.avatar}`) : null
   );
 
   // CV state
@@ -307,7 +307,7 @@ export default function ProfileModal({ isOpen, onClose }) {
                       </div>
                     ) : (
                       <img
-                        src={`http://localhost:3001${cvUrl}`}
+                        src={cvUrl.startsWith('http') || cvUrl.startsWith('data:') ? cvUrl : `http://localhost:3001${cvUrl}`}
                         alt="CV"
                         className="w-9 h-9 rounded-lg object-cover shrink-0 border border-slate-200 dark:border-slate-700"
                       />

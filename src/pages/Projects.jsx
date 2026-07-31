@@ -5,16 +5,90 @@ import {
   Plus, X, Calendar, User, Users, Pencil, Trash2, FolderKanban, Sparkles,
 } from 'lucide-react';
 
-const STATUT_OPTIONS = [
-  { value: 'en_attente', label: 'En attente' },
-  { value: 'en_cours', label: 'En cours' },
-  { value: 'termine', label: 'Terminé' },
-];
+const TRANSLATIONS = {
+  FR: {
+    loading: 'Chargement...',
+    projects: 'Projets',
+    tracking: 'Suivi & pilotage',
+    new_project: 'Nouveau Projet',
+    no_projects: 'Aucun projet pour le moment.',
+    create_first: 'Créer le premier projet',
+    no_desc: 'Aucune description fournie',
+    progress: 'Progression',
+    not_assigned: 'Non assigné',
+    edit_project: 'Modifier le projet',
+    name: 'Nom *',
+    desc: 'Description',
+    start_date: 'Date début',
+    end_date: 'Date fin',
+    status: 'Statut',
+    manager: 'Chef de Projet',
+    select: '— Sélectionner —',
+    collaborators: 'Collaborateurs',
+    photo: 'Photo du projet',
+    saving: 'Enregistrement…',
+    update: 'Mettre à jour',
+    create: 'Créer le projet',
+    tasks_done: 'tâches terminées',
+    manager_resp: 'Manager responsable',
+    no_collab: 'Aucun collaborateur assigné.',
+    edit: 'Modifier',
+    delete_confirm: 'Supprimer ce projet définitivement ?',
+    name_req: 'Le nom du projet est obligatoire.',
+    err_save: 'Erreur lors de la sauvegarde.',
+    statuses: {
+      en_attente: 'En attente',
+      en_cours: 'En cours',
+      termine: 'Terminé'
+    },
+    overall_prog: 'Progression globale'
+  },
+  EN: {
+    loading: 'Loading...',
+    projects: 'Projects',
+    tracking: 'Tracking & Management',
+    new_project: 'New Project',
+    no_projects: 'No projects at the moment.',
+    create_first: 'Create the first project',
+    no_desc: 'No description provided',
+    progress: 'Progress',
+    not_assigned: 'Not assigned',
+    edit_project: 'Edit Project',
+    name: 'Name *',
+    desc: 'Description',
+    start_date: 'Start Date',
+    end_date: 'End Date',
+    status: 'Status',
+    manager: 'Project Manager',
+    select: '— Select —',
+    collaborators: 'Collaborators',
+    photo: 'Project Photo',
+    saving: 'Saving…',
+    update: 'Update',
+    create: 'Create project',
+    tasks_done: 'tasks completed',
+    manager_resp: 'Responsible Manager',
+    no_collab: 'No collaborators assigned.',
+    edit: 'Edit',
+    delete_confirm: 'Permanently delete this project?',
+    name_req: 'Project name is required.',
+    err_save: 'Error saving.',
+    statuses: {
+      en_attente: 'Pending',
+      en_cours: 'In progress',
+      termine: 'Done'
+    },
+    overall_prog: 'Overall progress'
+  }
+};
 
 const STATUS_STYLES = {
   'En attente': 'bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/25',
   'En cours': 'bg-blue-500/10 text-blue-600 dark:text-blue-300 border-blue-500/25',
   'Terminé': 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border-emerald-500/25',
+  'Pending': 'bg-slate-500/10 text-slate-600 dark:text-slate-300 border-slate-500/25',
+  'In progress': 'bg-blue-500/10 text-blue-600 dark:text-blue-300 border-blue-500/25',
+  'Done': 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border-emerald-500/25',
 };
 
 function ProgressBar({ value, delay = 0 }) {
@@ -68,10 +142,13 @@ export default function Projects() {
     createProject,
     updateProject,
     deleteProject,
+    language
   } = useGlobalStore();
 
+  const t = TRANSLATIONS[language === 'EN' ? 'EN' : 'FR'];
+
   if (!currentUser) {
-    return <div className="p-8 text-center text-gray-500">Chargement...</div>;
+    return <div className="p-8 text-center text-gray-500">{t.loading}</div>;
   }
 
   const isAdmin = currentUser?.role?.toLowerCase() === 'admin';
@@ -83,6 +160,12 @@ export default function Projects() {
   const [form, setForm] = useState(emptyForm());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const STATUT_OPTIONS = [
+    { value: 'en_attente', label: t.statuses.en_attente },
+    { value: 'en_cours', label: t.statuses.en_cours },
+    { value: 'termine', label: t.statuses.termine },
+  ];
 
   useEffect(() => {
     fetchProjects();
@@ -126,7 +209,7 @@ export default function Projects() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.nom.trim()) {
-      setError('Le nom du projet est obligatoire.');
+      setError(t.name_req);
       return;
     }
     setLoading(true);
@@ -140,12 +223,12 @@ export default function Projects() {
       setModalOpen(false);
       setForm(emptyForm());
     } else {
-      setError(result.message || 'Erreur lors de la sauvegarde.');
+      setError(result.message || t.err_save);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Supprimer ce projet définitivement ?')) return;
+    if (!window.confirm(t.delete_confirm)) return;
     const result = await deleteProject(id);
     if (result.success) setDetail(null);
   };
@@ -159,14 +242,21 @@ export default function Projects() {
     }));
   };
 
+  const getTranslatedStatus = (originalStatus) => {
+     if (originalStatus === 'En attente') return t.statuses.en_attente;
+     if (originalStatus === 'En cours') return t.statuses.en_cours;
+     if (originalStatus === 'Terminé') return t.statuses.termine;
+     return originalStatus;
+  };
+
   return (
     <section id="projects" className="scroll-mt-8">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <p className="text-blue-600/80 dark:text-cyan-300/80 text-sm mb-1 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5" /> Suivi & pilotage
+            <Sparkles className="w-3.5 h-3.5" /> {t.tracking}
           </p>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Projets</h2>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{t.projects}</h2>
         </div>
         {isAdmin && (
           <button
@@ -174,7 +264,7 @@ export default function Projects() {
             onClick={openCreate}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-emerald-600 text-white text-sm font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all hover:-translate-y-0.5"
           >
-            <Plus className="w-4 h-4" /> Nouveau Projet
+            <Plus className="w-4 h-4" /> {t.new_project}
           </button>
         )}
       </div>
@@ -182,10 +272,10 @@ export default function Projects() {
       {projects.length === 0 ? (
         <div className="text-center py-16 rounded-2xl border border-dashed border-blue-200 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5">
           <FolderKanban className="w-12 h-12 mx-auto text-blue-300 dark:text-cyan-400/50 mb-3" />
-          <p className="text-slate-500 dark:text-slate-400 text-sm">Aucun projet pour le moment.</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">{t.no_projects}</p>
           {isAdmin && (
             <button type="button" onClick={openCreate} className="mt-4 text-blue-600 dark:text-cyan-300 text-sm font-semibold hover:underline">
-              Créer le premier projet
+              {t.create_first}
             </button>
           )}
         </div>
@@ -206,14 +296,14 @@ export default function Projects() {
               <div className="p-5 md:p-6 flex flex-col gap-4">
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="text-slate-900 dark:text-white font-semibold text-lg leading-tight">{proj.name}</h3>
-                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border shrink-0 ${STATUS_STYLES[proj.status] || STATUS_STYLES['En attente']}`}>
-                    {proj.status}
+                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border shrink-0 ${STATUS_STYLES[getTranslatedStatus(proj.status)] || STATUS_STYLES['En attente']}`}>
+                    {getTranslatedStatus(proj.status)}
                   </span>
                 </div>
-                <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2">{proj.description || <span className="italic text-slate-400">Aucune description fournie</span>}</p>
+                <p className="text-slate-500 dark:text-slate-400 text-sm line-clamp-2">{proj.description || <span className="italic text-slate-400">{t.no_desc}</span>}</p>
                 <div>
                   <div className="flex justify-between mb-2 text-xs">
-                    <span className="text-slate-500 font-medium">Progression</span>
+                    <span className="text-slate-500 font-medium">{t.progress}</span>
                     <span className="text-blue-600 dark:text-cyan-300 font-bold">{proj.progress}%</span>
                   </div>
                   <ProgressBar value={proj.progress} delay={i * 80} />
@@ -221,7 +311,7 @@ export default function Projects() {
                 <div className="flex items-center gap-2 pt-2 border-t border-blue-100/60 dark:border-white/10">
                   <User className="w-4 h-4 text-blue-500" />
                   <span className="text-sm text-slate-600 dark:text-slate-300 truncate">
-                    {proj.managerName || 'Non assigné'}
+                    {proj.managerName || t.not_assigned}
                   </span>
                 </div>
               </div>
@@ -236,7 +326,7 @@ export default function Projects() {
           <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-blue-100 dark:border-blue-500/20 flex flex-col">
             <div className="flex items-center justify-between p-4 sm:p-5 border-b border-blue-100 dark:border-white/10 shrink-0">
               <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                {editing ? 'Modifier le projet' : 'Nouveau Projet'}
+                {editing ? t.edit_project : t.new_project}
               </h3>
               <button type="button" onClick={() => setModalOpen(false)} className="p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-white/5">
                 <X className="w-5 h-5" />
@@ -245,7 +335,7 @@ export default function Projects() {
             <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4 flex-1">
               {error && <p className="text-red-500 text-sm bg-red-50 dark:bg-red-500/10 px-3 py-2 rounded-lg">{error}</p>}
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">Nom *</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">{t.name}</label>
                 <input
                   required
                   value={form.nom}
@@ -254,7 +344,7 @@ export default function Projects() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">Description</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">{t.desc}</label>
                 <textarea
                   rows={3}
                   value={form.description}
@@ -264,18 +354,18 @@ export default function Projects() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">Date début</label>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">{t.start_date}</label>
                   <input type="date" value={form.date_debut} onChange={(e) => setForm({ ...form, date_debut: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">Date fin</label>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">{t.end_date}</label>
                   <input type="date" value={form.date_fin} onChange={(e) => setForm({ ...form, date_fin: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">Statut</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">{t.status}</label>
                 <select value={form.statut} onChange={(e) => setForm({ ...form, statut: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
                   {STATUT_OPTIONS.map((o) => (
@@ -284,17 +374,17 @@ export default function Projects() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">Chef de Projet</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">{t.manager}</label>
                 <select value={form.manager_id} onChange={(e) => setForm({ ...form, manager_id: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
-                  <option value="">— Sélectionner —</option>
+                  <option value="">{t.select}</option>
                   {managers.map((m) => (
                     <option key={m.id} value={m.id}>{m.fullName || m.nom_prenom}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-2">Collaborateurs</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-2">{t.collaborators}</label>
                 <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto">
                   {employes.map((u) => (
                     <button
@@ -313,13 +403,13 @@ export default function Projects() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1">Photo du projet</label>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">{t.photo}</label>
                 <input type="file" accept="image/*" onChange={(e) => setForm({ ...form, image: e.target.files?.[0] || null })}
                   className="w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-600" />
               </div>
               <button type="submit" disabled={loading}
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-emerald-600 text-white font-semibold text-sm disabled:opacity-50 shrink-0">
-                {loading ? 'Enregistrement…' : editing ? 'Mettre à jour' : 'Créer le projet'}
+                {loading ? t.saving : editing ? t.update : t.create}
               </button>
             </form>
           </div>
@@ -338,8 +428,8 @@ export default function Projects() {
             <div className="p-6 md:p-8">
               <div className="flex items-start justify-between gap-4 mb-6">
                 <div>
-                  <span className={`inline-block text-[10px] font-bold px-2.5 py-1 rounded-full border mb-2 ${STATUS_STYLES[detail.status]}`}>
-                    {detail.status}
+                  <span className={`inline-block text-[10px] font-bold px-2.5 py-1 rounded-full border mb-2 ${STATUS_STYLES[getTranslatedStatus(detail.status)]}`}>
+                    {getTranslatedStatus(detail.status)}
                   </span>
                   <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{detail.name}</h3>
                 </div>
@@ -348,31 +438,31 @@ export default function Projects() {
                 </button>
               </div>
               <div className="mb-6">
-                <p className="text-xs font-semibold text-slate-500 mb-2">Progression globale</p>
+                <p className="text-xs font-semibold text-slate-500 mb-2">{t.overall_prog}</p>
                 <ProgressBar value={detail.progress} />
                 <p className="text-right text-sm font-bold text-blue-600 dark:text-cyan-300 mt-1">{detail.progress}%</p>
-                <p className="text-xs text-slate-400 mt-1">{detail.taskDone || 0} / {detail.taskTotal || 0} tâches terminées</p>
+                <p className="text-xs text-slate-400 mt-1">{detail.taskDone || 0} / {detail.taskTotal || 0} {t.tasks_done}</p>
               </div>
-              <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed mb-6">{detail.description || <span className="italic text-slate-400">Aucune description fournie</span>}</p>
+              <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed mb-6">{detail.description || <span className="italic text-slate-400">{t.no_desc}</span>}</p>
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                   <Calendar className="w-4 h-4 text-blue-500" />
-                  <span>Début : {detail.startDate || '—'}</span>
+                  <span>{t.start_date} : {detail.startDate || '—'}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                   <Calendar className="w-4 h-4 text-emerald-500" />
-                  <span>Fin : {detail.endDate || '—'}</span>
+                  <span>{t.end_date} : {detail.endDate || '—'}</span>
                 </div>
               </div>
               <div className="mb-6 p-4 rounded-xl bg-blue-50/50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/15">
-                <p className="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1"><User className="w-3.5 h-3.5" /> Manager responsable</p>
-                <p className="font-semibold text-slate-900 dark:text-white">{detail.managerName || 'Non assigné'}</p>
+                <p className="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1"><User className="w-3.5 h-3.5" /> {t.manager_resp}</p>
+                <p className="font-semibold text-slate-900 dark:text-white">{detail.managerName || t.not_assigned}</p>
                 {detail.managerEmail && <p className="text-xs text-slate-500">{detail.managerEmail}</p>}
               </div>
               <div className="mb-6">
-                <p className="text-xs font-semibold text-slate-500 mb-3 flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Collaborateurs</p>
+                <p className="text-xs font-semibold text-slate-500 mb-3 flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {t.collaborators}</p>
                 {(detail.collaborators || []).length === 0 ? (
-                  <p className="text-sm text-slate-400">Aucun collaborateur assigné.</p>
+                  <p className="text-sm text-slate-400">{t.no_collab}</p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {detail.collaborators.map((c) => (
@@ -387,7 +477,7 @@ export default function Projects() {
                 <div className="flex gap-3 pt-4 border-t border-blue-100 dark:border-white/10">
                   <button type="button" onClick={() => openEdit(detail)}
                     className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-blue-200 dark:border-blue-500/30 text-sm font-semibold text-blue-600 dark:text-cyan-300 hover:bg-blue-50 dark:hover:bg-blue-500/10">
-                    <Pencil className="w-4 h-4" /> Modifier
+                    <Pencil className="w-4 h-4" /> {t.edit}
                   </button>
                   <button type="button" onClick={() => handleDelete(detail.id)}
                     className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 text-sm font-semibold hover:bg-red-100">

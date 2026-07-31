@@ -2,26 +2,16 @@
 
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
 const { body, param, validationResult } = require('express-validator');
 const { protect } = require('../middleware/auth');
 const { pool } = require('../config/db');
+const { uploadToCloudinary, deleteFromCloudinary } = require('../config/cloudinary');
 
 const router = express.Router();
 
-const UPLOAD_DIR = path.join(__dirname, '../../uploads/documents');
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname) || '';
-    const baseName = path.basename(file.originalname, ext);
-    const sanitized = baseName.replace(/[^a-zA-Z0-9_-]/g, '_');
-    cb(null, `doc-${Date.now()}-${sanitized}${ext}`);
-  },
-});
+// Memory storage so no local disk files are kept on Railway
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -32,17 +22,19 @@ let schemaReady = false;
 
 async function ensureSchema() {
   if (schemaReady) return;
+  const dbName = process.env.DB_NAME || 'jrsd_os';
   
   await pool.execute(`
     CREATE TABLE IF NOT EXISTS documents (
-      id          INT UNSIGNED   NOT NULL AUTO_INCREMENT,
-      name        VARCHAR(255)   NOT NULL,
-      file_path   VARCHAR(500)   NOT NULL,
-      file_type   VARCHAR(50)    NOT NULL,
-      uploaded_by INT UNSIGNED   NOT NULL,
-      target_type ENUM('all', 'team', 'project') NOT NULL DEFAULT 'all',
-      target_id   INT UNSIGNED   DEFAULT NULL,
-      created_at  DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      id                    INT UNSIGNED   NOT NULL AUTO_INCREMENT,
+      name                  VARCHAR(255)   NOT NULL,
+      file_path             VARCHAR(500)   NOT NULL,
+      file_type             VARCHAR(50)    NOT NULL,
+      cloudinary_public_id VARCHAR(255)   DEFAULT NULL,
+      uploaded_by           INT UNSIGNED   NOT NULL,
+      target_type           ENUM('all', 'team', 'project') NOT NULL DEFAULT 'all',
+      target_id             INT UNSIGNED   DEFAULT NULL,
+      created_at            DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (id),
       INDEX idx_documents_target (target_type, target_id),
       INDEX idx_documents_uploader (uploaded_by),
@@ -51,6 +43,19 @@ async function ensureSchema() {
         ON DELETE CASCADE ON UPDATE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+
+  // Ensure column cloudinary_public_id exists if table was already created
+  const [cols] = await pool.execute(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'documents' AND COLUMN_NAME = 'cloudinary_public_id'`,
+    [dbName]
+  );
+  if (cols.length === 0) {
+    await pool.execute(`
+      ALTER TABLE documents
+        ADD COLUMN cloudinary_public_id VARCHAR(255) DEFAULT NULL AFTER file_type
+    `);
+  }
 
   schemaReady = true;
 }
@@ -64,16 +69,22 @@ function validateRequest(req, res, next) {
 }
 
 function mapDocumentRow(row) {
+  const isDirectUrl = row.file_path.startsWith('http://') || row.file_path.startsWith('https://') || row.file_path.startsWith('data:');
+  const downloadUrl = isDirectUrl 
+    ? row.file_path 
+    : `http://localhost:${process.env.PORT || 3001}${row.file_path}`;
+
   return {
     id: row.id,
     name: row.name,
     filePath: row.file_path,
     fileType: row.file_type,
+    cloudinaryPublicId: row.cloudinary_public_id || null,
     uploadedBy: row.uploaded_by,
     targetType: row.target_type,
     targetId: row.target_id,
     createdAt: row.created_at,
-    downloadUrl: `http://localhost:${process.env.PORT || 3001}${row.file_path}`,
+    downloadUrl,
   };
 }
 
@@ -129,7 +140,6 @@ router.post(
       // Security: Non-admin users can only upload to their own team or projects
       if (req.userRole !== 'admin') {
         if (target_type === 'team') {
-          // Verify the user belongs to this team
           const [userTeam] = await pool.execute(
             'SELECT team_id FROM users WHERE id = ?',
             [req.userId]
@@ -141,7 +151,6 @@ router.post(
             });
           }
         } else if (target_type === 'project') {
-          // Verify the user is a member of this project
           const [projectMember] = await pool.execute(
             'SELECT * FROM project_members WHERE project_id = ? AND user_id = ?',
             [target_id, req.userId]
@@ -158,13 +167,21 @@ router.post(
       const ext = path.extname(req.file.originalname).replace('.', '').toLowerCase();
       const file_type = ext || 'unknown';
 
+      // Centralized Cloudinary Upload with resource_type: "auto"
+      const cloudResult = await uploadToCloudinary(req.file.buffer, {
+        folder: 'jrsd_os/documents',
+        resource_type: 'auto',
+        mimetype: req.file.mimetype,
+      });
+
       const [result] = await pool.execute(
-        `INSERT INTO documents (name, file_path, file_type, uploaded_by, target_type, target_id)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO documents (name, file_path, file_type, cloudinary_public_id, uploaded_by, target_type, target_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           req.file.originalname,
-          `/uploads/documents/${req.file.filename}`,
+          cloudResult.secure_url,
           file_type,
+          cloudResult.public_id,
           req.userId,
           target_type,
           target_type === 'all' ? null : target_id,
@@ -180,7 +197,7 @@ router.post(
       });
     } catch (err) {
       console.error('[POST /api/documents/upload]', err.message);
-      res.status(500).json({ success: false, message: 'Erreur serveur.' });
+      res.status(500).json({ success: false, message: 'Erreur serveur lors du téléversement.' });
     }
   }
 );
@@ -192,7 +209,6 @@ router.get('/', protect, async (req, res) => {
     let params;
 
     if (req.userRole === 'admin') {
-      // Admin: tous les documents
       query = `
         SELECT d.*, u.nom_prenom as uploader_name, u.email as uploader_email
         FROM documents d
@@ -201,7 +217,6 @@ router.get('/', protect, async (req, res) => {
       `;
       params = [];
     } else {
-      // User/Manager: documents accessibles (all, leur team, ou leurs projets)
       query = `
         SELECT d.*, u.nom_prenom as uploader_name, u.email as uploader_email
         FROM documents d
@@ -242,7 +257,6 @@ router.delete(
     try {
       const { id } = req.params;
 
-      // Récupérer le document
       const [docRows] = await pool.execute('SELECT * FROM documents WHERE id = ?', [id]);
       if (!docRows.length) {
         return res.status(404).json({ success: false, message: 'Document introuvable.' });
@@ -250,7 +264,6 @@ router.delete(
 
       const doc = docRows[0];
 
-      // Vérification des droits
       if (req.userRole !== 'admin' && doc.uploaded_by !== req.userId) {
         return res.status(403).json({
           success: false,
@@ -258,18 +271,12 @@ router.delete(
         });
       }
 
-      // Supprimer le fichier physique
-      const filePath = path.join(__dirname, '../../uploads/documents', path.basename(doc.file_path));
-      try {
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      } catch (fileErr) {
-        console.error('[DELETE file]', fileErr.message);
-        // On continue même si la suppression du fichier échoue
+      // Delete from Cloudinary if public_id exists
+      if (doc.cloudinary_public_id) {
+        await deleteFromCloudinary(doc.cloudinary_public_id, 'auto');
       }
 
-      // Supprimer l'enregistrement BDD
+      // Delete database row
       await pool.execute('DELETE FROM documents WHERE id = ?', [id]);
 
       res.json({ success: true, message: 'Document supprimé.' });
