@@ -1,29 +1,17 @@
 'use strict';
 
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
 const { body, param, validationResult } = require('express-validator');
 const { protect, adminOnly, managerOrAdmin } = require('../middleware/auth');
 const { pool } = require('../config/db');
 const notifService = require('../services/notifService');
+const { uploadToCloudinary, deleteFromCloudinary } = require('../config/cloudinary');
 
 const router = express.Router();
 
-const UPLOAD_DIR = path.join(__dirname, '../../uploads/projects');
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.jpg';
-    cb(null, `project-${Date.now()}${ext}`);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (!file.mimetype.startsWith('image/')) {
@@ -47,6 +35,17 @@ async function ensureSchema() {
   if (cols.length === 0) {
     await pool.execute(
       'ALTER TABLE projects ADD COLUMN image_url VARCHAR(500) DEFAULT NULL COMMENT \'Chemin photo du projet\''
+    );
+  }
+
+  const [publicIdCols] = await pool.execute(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'projects' AND COLUMN_NAME = 'image_public_id'`,
+    [dbName]
+  );
+  if (publicIdCols.length === 0) {
+    await pool.execute(
+      'ALTER TABLE projects ADD COLUMN image_public_id VARCHAR(255) DEFAULT NULL AFTER image_url'
     );
   }
 
@@ -103,10 +102,30 @@ function parseCollaboratorIds(raw) {
     .filter((n) => !Number.isNaN(n));
 }
 
+function resolveImageUrl(imageUrl) {
+  if (!imageUrl) return null;
+  if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
+  const base = process.env.API_PUBLIC_URL || `http://localhost:${process.env.PORT || 3001}`;
+  return `${base.replace(/\/$/, '')}${imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`}`;
+}
+
+async function uploadProjectImage(file, previousPublicId = null) {
+  if (previousPublicId) {
+    await deleteFromCloudinary(previousPublicId, 'image');
+  }
+  const cloudResult = await uploadToCloudinary(file.buffer, {
+    folder: 'jrsd_os/projects',
+    resource_type: 'image',
+    mimetype: file.mimetype,
+  });
+  return {
+    imageUrl: cloudResult.secure_url,
+    imagePublicId: cloudResult.public_id,
+  };
+}
+
 function mapProjectRow(row) {
-  const imageUrl = row.image_url
-    ? (row.image_url.startsWith('http') ? row.image_url : `http://localhost:${process.env.PORT || 3001}${row.image_url}`)
-    : null;
+  const imageUrl = resolveImageUrl(row.image_url);
 
   return {
     id: row.id,
@@ -250,7 +269,13 @@ router.post(
       }
 
       const statut = mapStatutToDb(req.body.statut || 'en_attente');
-      const imageUrl = req.file ? `/uploads/projects/${req.file.filename}` : null;
+      let imageUrl = null;
+      let imagePublicId = null;
+      if (req.file) {
+        const uploaded = await uploadProjectImage(req.file);
+        imageUrl = uploaded.imageUrl;
+        imagePublicId = uploaded.imagePublicId;
+      }
       const managerId = req.body.manager_id ? parseInt(req.body.manager_id, 10) : null;
 
       if (managerId) {
@@ -264,8 +289,8 @@ router.post(
       }
 
       const [result] = await pool.execute(
-        `INSERT INTO projects (nom, description, date_debut, date_fin, statut, manager_id, image_url)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO projects (nom, description, date_debut, date_fin, statut, manager_id, image_url, image_public_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           nom,
           req.body.description?.trim() || null,
@@ -274,6 +299,7 @@ router.post(
           statut,
           managerId,
           imageUrl,
+          imagePublicId,
         ]
       );
 
@@ -348,14 +374,17 @@ router.put(
       }
 
       let imageUrl = current.image_url;
+      let imagePublicId = current.image_public_id || null;
       if (req.file) {
-        imageUrl = `/uploads/projects/${req.file.filename}`;
+        const uploaded = await uploadProjectImage(req.file, current.image_public_id);
+        imageUrl = uploaded.imageUrl;
+        imagePublicId = uploaded.imagePublicId;
       }
 
       await pool.execute(
         `UPDATE projects SET
           nom = ?, description = ?, date_debut = ?, date_fin = ?,
-          statut = ?, manager_id = ?, image_url = ?
+          statut = ?, manager_id = ?, image_url = ?, image_public_id = ?
          WHERE id = ?`,
         [
           nom,
@@ -365,6 +394,7 @@ router.put(
           statut,
           managerId,
           imageUrl,
+          imagePublicId,
           id,
         ]
       );
@@ -480,7 +510,7 @@ router.delete(
 
       // Récupérer infos avant suppression pour notifier
       const [projectRows] = await pool.execute(
-        'SELECT nom, manager_id FROM projects WHERE id = ?',
+        'SELECT nom, manager_id, image_public_id FROM projects WHERE id = ?',
         [id]
       );
       if (!projectRows.length) {
@@ -488,6 +518,9 @@ router.delete(
       }
       const deletedName = projectRows[0].nom;
       const deletedManagerId = projectRows[0].manager_id;
+      if (projectRows[0].image_public_id) {
+        await deleteFromCloudinary(projectRows[0].image_public_id, 'image');
+      }
       const [memberRows] = await pool.execute(
         'SELECT user_id FROM project_members WHERE project_id = ?',
         [id]
