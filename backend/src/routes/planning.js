@@ -125,8 +125,8 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     const { id } = req.params;
     const { title, description, start_time, end_time, target_type, target_team_id, icon } = req.body;
 
-    const [event] = await pool.execute('SELECT * FROM planning_events WHERE id = ?', [id]);
-    if (event.length === 0) {
+    const [eventRows] = await pool.execute('SELECT * FROM planning_events WHERE id = ?', [id]);
+    if (eventRows.length === 0) {
       return res.status(404).json({ success: false, message: 'Événement introuvable.' });
     }
 
