@@ -115,7 +115,7 @@ router.put('/:id/role',
       console.error('[PUT /api/users/:id/role]', err.message);
       res.status(500).json({ success: false, message: 'Erreur serveur.' });
     }
-});
+  });
 
 /** PUT /api/users/profile - Update user profile (Self) */
 router.put('/profile', protect, uploadMemory.single('avatar'), async (req, res) => {
@@ -230,7 +230,7 @@ router.get('/:id/cv', protect, adminOnly, async (req, res) => {
     }
 
     const { cv_url } = rows[0];
-    
+
     // Redirect directly to the Cloudinary URL
     return res.redirect(cv_url);
   } catch (err) {

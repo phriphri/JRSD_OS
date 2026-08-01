@@ -5,6 +5,7 @@ const { body, param, validationResult } = require('express-validator');
 const { protect } = require('../middleware/auth');
 const { pool } = require('../config/db');
 const { emitToUser, getOnlineUsers } = require('../socket');
+const notifService = require('../services/notifService');
 
 const router = express.Router();
 
@@ -135,6 +136,20 @@ router.get('/conversations', protect, async (req, res) => {
       [userId, userId, userId, userId]
     );
 
+    // Récupérer le nombre de messages non lus par expéditeur pour cet utilisateur
+    const [unreadRows] = await pool.execute(
+      `SELECT sender_id, COUNT(*) AS count
+       FROM direct_messages
+       WHERE receiver_id = ? AND is_read = FALSE AND is_deleted = FALSE
+       GROUP BY sender_id`,
+      [userId]
+    );
+
+    const unreadMap = {};
+    for (const r of unreadRows) {
+      unreadMap[r.sender_id] = Number(r.count);
+    }
+
     const conversations = rows.map((r) => ({
       contactId: r.contact_id,
       nomPrenom: r.nom_prenom,
@@ -146,7 +161,7 @@ router.get('/conversations', protect, async (req, res) => {
         ? 'Ce message a été supprimé'
         : r.last_content,
       lastSenderId: r.last_sender_id,
-      unreadCount: 0,
+      unreadCount: unreadMap[r.contact_id] || 0,
       isOnline: getOnlineUsers().includes(r.contact_id),
     }));
 
@@ -243,6 +258,19 @@ router.post(
 
       emitToUser(receiver_id, 'new_message', { message });
       emitToUser(senderId, 'new_message', { message });
+
+      // 🔔 Notifier le destinataire du nouveau message (fire-and-forget)
+      const [senderRow] = await pool.execute('SELECT nom_prenom FROM users WHERE id = ?', [senderId]);
+      const senderName = senderRow[0]?.nom_prenom || 'Un utilisateur';
+      notifService.createNotif({
+        userId: receiver_id,
+        type: 'new_message',
+        title: `Nouveau message de ${senderName}`,
+        body: contenu.trim().length > 50 ? `${contenu.trim().substring(0, 50)}...` : contenu.trim(),
+        link: '/messages',
+        entityType: 'messages',
+        entityId: senderId,
+      });
 
       res.status(201).json({ success: true, message });
     } catch (err) {

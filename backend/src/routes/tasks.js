@@ -4,6 +4,7 @@ const express = require('express');
 const { body, param, validationResult } = require('express-validator');
 const { protect, adminOnly, managerOrAdmin } = require('../middleware/auth');
 const { pool } = require('../config/db');
+const notifService = require('../services/notifService');
 
 const router = express.Router();
 
@@ -356,7 +357,22 @@ router.post(
       await connection.commit();
 
       const [rows] = await pool.execute(`${taskSelectSql} WHERE t.id = ?`, [result.insertId]);
-      res.status(201).json({ success: true, message: 'Tâche créée.', task: mapTaskRow(rows[0]) });
+      const newTask = mapTaskRow(rows[0]);
+
+      // 🔔 Notification automatique à l'assigné (fire-and-forget)
+      if (assigneeId !== req.userId) {
+        notifService.createNotif({
+          userId: assigneeId,
+          type: 'task_assigned',
+          title: `Nouvelle tâche : ${req.body.titre.trim()}`,
+          body: req.body.description?.trim() || null,
+          link: '/tasks',
+          entityType: 'tasks',
+          entityId: result.insertId,
+        });
+      }
+
+      res.status(201).json({ success: true, message: 'Tâche créée.', task: newTask });
     } catch (err) {
       await connection.rollback();
       console.error('[POST /api/tasks]', err.message);
@@ -429,7 +445,25 @@ router.put(
       await pool.execute('UPDATE tasks SET statut = ? WHERE id = ?', [req.body.statut, id]);
 
       const [rows] = await pool.execute(`${taskSelectSql} WHERE t.id = ?`, [id]);
-      res.json({ success: true, message: 'Statut mis à jour.', task: mapTaskRow(rows[0]) });
+      const updatedTask = mapTaskRow(rows[0]);
+
+      // 🔔 Notification au propriétaire de la tâche si quelqu'un d'autre change le statut
+      if (task.assignee_id && task.assignee_id !== req.userId) {
+        const statusLabels = {
+          a_faire: 'À faire', en_cours: 'En cours', bloque: 'Bloqué', termine: 'Terminé',
+        };
+        notifService.createNotif({
+          userId: task.assignee_id,
+          type: 'task_status_changed',
+          title: `Statut modifié : ${updatedTask.title}`,
+          body: `Nouveau statut : ${statusLabels[req.body.statut] || req.body.statut}`,
+          link: '/tasks',
+          entityType: 'tasks',
+          entityId: Number(id),
+        });
+      }
+
+      res.json({ success: true, message: 'Statut mis à jour.', task: updatedTask });
     } catch (err) {
       console.error('[PUT /api/tasks/:id/status]', err.message);
       res.status(500).json({ success: false, message: 'Erreur serveur.' });

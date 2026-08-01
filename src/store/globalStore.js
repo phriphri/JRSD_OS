@@ -48,6 +48,8 @@ export const useGlobalStore = create((set, get) => ({
   documents: mockDocuments,
   events: mockEvents,
   notifications: [],
+  userNotifications: [],
+  unreadUserNotifCount: 0,
   conversations: [],
   activeChatMessages: [],
   activeContactId: null,
@@ -105,6 +107,7 @@ export const useGlobalStore = create((set, get) => ({
       get().fetchConversations();
       get().fetchUnreadCount();
       get().fetchNotifications();
+      get().fetchUserNotifications();
       get().fetchPlanningEvents();
       get().fetchDocuments();
     } catch (err) {
@@ -129,6 +132,7 @@ export const useGlobalStore = create((set, get) => ({
       get().connectSocket();
       get().fetchConversations();
       get().fetchNotifications();
+      get().fetchUserNotifications();
       get().fetchPlanningEvents();
       get().fetchDocuments();
       
@@ -203,6 +207,8 @@ export const useGlobalStore = create((set, get) => ({
       onlineUsers: [],
       unreadMessagesCount: 0,
       notifications: [],
+      userNotifications: [],
+      unreadUserNotifCount: 0,
       planningEvents: [],
     });
   },
@@ -599,6 +605,50 @@ export const useGlobalStore = create((set, get) => ({
     }
   },
 
+  // Auto User Notifications
+  fetchUserNotifications: async () => {
+    try {
+      const [resList, resCount] = await Promise.all([
+        api.userNotifications.getAll(),
+        api.userNotifications.getUnreadCount(),
+      ]);
+      if (resList.success) set({ userNotifications: resList.notifications });
+      if (resCount.success) set({ unreadUserNotifCount: resCount.count });
+    } catch (err) {
+      console.error('Erreur fetchUserNotifications:', err);
+    }
+  },
+
+  markUserNotifAsRead: async (notifId) => {
+    try {
+      const res = await api.userNotifications.markAsRead(notifId);
+      if (res.success) {
+        set((state) => ({
+          userNotifications: state.userNotifications.map((n) =>
+            n.id === notifId ? { ...n, is_read: true } : n
+          ),
+          unreadUserNotifCount: Math.max(0, state.unreadUserNotifCount - 1),
+        }));
+      }
+    } catch (err) {
+      console.error('Erreur markUserNotifAsRead:', err);
+    }
+  },
+
+  markAllUserNotifsAsRead: async () => {
+    try {
+      const res = await api.userNotifications.markAllAsRead();
+      if (res.success) {
+        set((state) => ({
+          userNotifications: state.userNotifications.map((n) => ({ ...n, is_read: true })),
+          unreadUserNotifCount: 0,
+        }));
+      }
+    } catch (err) {
+      console.error('Erreur markAllUserNotifsAsRead:', err);
+    }
+  },
+
   setActiveContactId: (contactId) => set({ activeContactId: contactId }),
 
   connectSocket: () => {
@@ -621,6 +671,12 @@ export const useGlobalStore = create((set, get) => ({
         get().markMessagesRead(contactId, messageIds);
         // Refresh unread count when messages are marked as read
         get().fetchUnreadCount();
+      },
+      onNotification: (notif) => {
+        set((state) => ({
+          userNotifications: [notif, ...state.userNotifications.filter((n) => n.id !== notif.id)],
+          unreadUserNotifCount: state.unreadUserNotifCount + 1,
+        }));
       },
     });
   },

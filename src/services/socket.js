@@ -24,6 +24,7 @@ export function connectMessagingSocket(token, userId, handlers = {}) {
   if (handlers.onMessageDeleted) socket.on('message_deleted', handlers.onMessageDeleted);
   if (handlers.onMessagesRead) socket.on('messages_read', handlers.onMessagesRead);
   if (handlers.onPresence) socket.on('presence_update', handlers.onPresence);
+  if (handlers.onNotification) socket.on('notification', handlers.onNotification);
 
   return socket;
 }

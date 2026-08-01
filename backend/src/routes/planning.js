@@ -9,6 +9,31 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/db');
 const { protect, adminOnly } = require('../middleware/auth');
+const notifService = require('../services/notifService');
+
+/**
+ * Récupère tous les user_id concernés par un événement planning.
+ * target_type='all'  → tous les utilisateurs
+ * target_type='team' → membres de l'équipe target_team_id
+ */
+async function getTargetUserIds(targetType, targetTeamId) {
+  try {
+    if (targetType === 'all') {
+      const [rows] = await pool.execute('SELECT id FROM users WHERE status = \'actif\' OR status IS NULL');
+      return rows.map(r => r.id);
+    }
+    if (targetType === 'team' && targetTeamId) {
+      const [rows] = await pool.execute(
+        'SELECT id FROM users WHERE team_id = ?',
+        [targetTeamId]
+      );
+      return rows.map(r => r.id);
+    }
+  } catch (err) {
+    console.error('[planning getTargetUserIds]', err.message);
+  }
+  return [];
+}
 
 // GET /api/planning/my-schedule
 // Renvoie les événements pour l'utilisateur connecté
@@ -69,8 +94,24 @@ router.post('/', protect, adminOnly, async (req, res) => {
     );
 
     const [newEvent] = await pool.execute('SELECT * FROM planning_events WHERE id = ?', [String(result.insertId)]);
+    const event = newEvent[0];
 
-    res.status(201).json({ success: true, event: newEvent[0] });
+    // 🔔 Notifier les utilisateurs ciblés (fire-and-forget)
+    getTargetUserIds(event.target_type, event.target_team_id).then(userIds => {
+      const recipients = userIds.filter(uid => uid !== req.userId);
+      if (recipients.length) {
+        notifService.createNotifForMany(recipients, {
+          type: 'planning_created',
+          title: `Nouvel événement : ${event.title}`,
+          body: event.description || null,
+          link: '/planning',
+          entityType: 'planning',
+          entityId: event.id,
+        });
+      }
+    });
+
+    res.status(201).json({ success: true, event });
   } catch (err) {
     console.error('[Planning POST] Erreur :', err);
     res.status(500).json({ success: false, message: 'Erreur serveur.' });
@@ -103,8 +144,23 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
     );
 
     const [updatedEvent] = await pool.execute('SELECT * FROM planning_events WHERE id = ?', [id]);
+    const event = updatedEvent[0];
 
-    res.json({ success: true, event: updatedEvent[0] });
+    // 🔔 Notifier les utilisateurs ciblés (fire-and-forget)
+    getTargetUserIds(event.target_type, event.target_team_id).then(userIds => {
+      const recipients = userIds.filter(uid => uid !== req.userId);
+      if (recipients.length) {
+        notifService.createNotifForMany(recipients, {
+          type: 'planning_updated',
+          title: `Événement modifié : ${event.title}`,
+          link: '/planning',
+          entityType: 'planning',
+          entityId: Number(id),
+        });
+      }
+    });
+
+    res.json({ success: true, event });
   } catch (err) {
     console.error('[Planning PUT] Erreur :', err);
     res.status(500).json({ success: false, message: 'Erreur serveur.' });
@@ -116,10 +172,31 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
 router.delete('/:id', protect, adminOnly, async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Récupérer l'événement avant suppression
+    const [eventRows] = await pool.execute('SELECT * FROM planning_events WHERE id = ?', [id]);
+    const deletedEvent = eventRows[0];
+
     const [result] = await pool.execute('DELETE FROM planning_events WHERE id = ?', [id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ success: false, message: 'Événement introuvable.' });
+    }
+
+    // 🔔 Notifier (fire-and-forget)
+    if (deletedEvent) {
+      getTargetUserIds(deletedEvent.target_type, deletedEvent.target_team_id).then(userIds => {
+        const recipients = userIds.filter(uid => uid !== req.userId);
+        if (recipients.length) {
+          notifService.createNotifForMany(recipients, {
+            type: 'planning_deleted',
+            title: `Événement supprimé : ${deletedEvent.title}`,
+            link: '/planning',
+            entityType: 'planning',
+            entityId: Number(id),
+          });
+        }
+      });
     }
 
     res.json({ success: true, message: 'Événement supprimé.' });

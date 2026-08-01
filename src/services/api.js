@@ -182,6 +182,12 @@ export const api = {
     }),
     delete: (id) => fetchWithAuth(`/notifications/${id}`, { method: 'DELETE' }),
   },
+  userNotifications: {
+    getAll: () => fetchWithAuth('/user-notifications', { method: 'GET' }),
+    getUnreadCount: () => fetchWithAuth('/user-notifications/unread-count', { method: 'GET' }),
+    markAsRead: (id) => fetchWithAuth(`/user-notifications/${id}/read`, { method: 'POST' }),
+    markAllAsRead: () => fetchWithAuth('/user-notifications/read-all', { method: 'POST' }),
+  },
   planning: {
     getMySchedule: () => fetchWithAuth('/planning/my-schedule', { method: 'GET' }),
     create: (data) => fetchWithAuth('/planning', {

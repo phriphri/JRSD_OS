@@ -317,10 +317,17 @@ export default function Messages() {
                   </div>
                   <div className="flex-1 min-w-0 text-left">
                     <div className="flex justify-between items-baseline">
-                      <span className="font-semibold text-gray-900 dark:text-white truncate">{conv.nomPrenom}</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-semibold text-gray-900 dark:text-white truncate">{conv.nomPrenom}</span>
+                        {conv.unreadCount > 0 && (
+                          <span className="bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 animate-pulse">
+                            {conv.unreadCount}
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[10px] text-gray-400 shrink-0 ml-2">{formatConvDate(conv.lastMessageAt)}</span>
                     </div>
-                    <p className="text-xs text-gray-500 truncate mt-0.5">
+                    <p className={`text-xs truncate mt-0.5 ${conv.unreadCount > 0 ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-500'}`}>
                       {Number(conv.lastSenderId) === Number(currentUser?.id) ? 'Vous: ' : ''}{conv.lastMessage}
                     </p>
                   </div>

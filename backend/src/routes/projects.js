@@ -7,6 +7,7 @@ const multer = require('multer');
 const { body, param, validationResult } = require('express-validator');
 const { protect, adminOnly, managerOrAdmin } = require('../middleware/auth');
 const { pool } = require('../config/db');
+const notifService = require('../services/notifService');
 
 const router = express.Router();
 
@@ -284,11 +285,25 @@ router.post(
         [projectId]
       );
       const collaborators = await fetchCollaborators(projectId);
+      const project = mapProjectRow({ ...rows[0], collaborators });
+
+      // 🔔 Notifier le manager du projet (fire-and-forget)
+      if (managerId && managerId !== req.userId) {
+        notifService.createNotif({
+          userId: managerId,
+          type: 'project_created',
+          title: `Nouveau projet : ${nom}`,
+          body: req.body.description?.trim() || null,
+          link: `/projects/${projectId}`,
+          entityType: 'projects',
+          entityId: projectId,
+        });
+      }
 
       res.status(201).json({
         success: true,
         message: 'Projet créé.',
-        project: mapProjectRow({ ...rows[0], collaborators }),
+        project,
       });
     } catch (err) {
       console.error('[POST /api/projects]', err.message);
@@ -363,11 +378,26 @@ router.put(
         [id]
       );
       const collaborators = await fetchCollaborators(id);
+      const updatedProject = mapProjectRow({ ...rows[0], collaborators });
+
+      // 🔔 Notifier tous les membres du projet (fire-and-forget)
+      const memberIds = collaborators.map(c => c.id);
+      if (managerId && !memberIds.includes(managerId)) memberIds.push(managerId);
+      const recipients = memberIds.filter(uid => uid !== req.userId);
+      if (recipients.length) {
+        notifService.createNotifForMany(recipients, {
+          type: 'project_updated',
+          title: `Projet mis à jour : ${updatedProject.name}`,
+          link: `/projects/${id}`,
+          entityType: 'projects',
+          entityId: Number(id),
+        });
+      }
 
       res.json({
         success: true,
         message: 'Projet mis à jour.',
-        project: mapProjectRow({ ...rows[0], collaborators }),
+        project: updatedProject,
       });
     } catch (err) {
       console.error('[PUT /api/projects/:id]', err.message);
@@ -447,10 +477,43 @@ router.delete(
   async (req, res) => {
     try {
       const { id } = req.params;
+
+      // Récupérer infos avant suppression pour notifier
+      const [projectRows] = await pool.execute(
+        'SELECT nom, manager_id FROM projects WHERE id = ?',
+        [id]
+      );
+      if (!projectRows.length) {
+        return res.status(404).json({ success: false, message: 'Projet introuvable.' });
+      }
+      const deletedName = projectRows[0].nom;
+      const deletedManagerId = projectRows[0].manager_id;
+      const [memberRows] = await pool.execute(
+        'SELECT user_id FROM project_members WHERE project_id = ?',
+        [id]
+      );
+      const memberIds = memberRows.map(r => r.user_id);
+      if (deletedManagerId && !memberIds.includes(deletedManagerId)) {
+        memberIds.push(deletedManagerId);
+      }
+
       const [result] = await pool.execute('DELETE FROM projects WHERE id = ?', [id]);
       if (result.affectedRows === 0) {
         return res.status(404).json({ success: false, message: 'Projet introuvable.' });
       }
+
+      // 🔔 Notifier les membres (fire-and-forget)
+      const recipients = memberIds.filter(uid => uid !== req.userId);
+      if (recipients.length) {
+        notifService.createNotifForMany(recipients, {
+          type: 'project_deleted',
+          title: `Projet supprimé : ${deletedName}`,
+          link: '/projects',
+          entityType: 'projects',
+          entityId: Number(id),
+        });
+      }
+
       res.json({ success: true, message: 'Projet supprimé.' });
     } catch (err) {
       console.error('[DELETE /api/projects/:id]', err.message);

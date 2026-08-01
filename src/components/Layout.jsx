@@ -54,7 +54,7 @@ const ROLE_COLORS = {
 };
 
 export default function Layout() {
-  const { currentUser, logout, notifications, darkMode, toggleTheme, language, setLanguage, unreadMessagesCount } = useGlobalStore();
+  const { currentUser, logout, notifications, userNotifications, unreadUserNotifCount, darkMode, toggleTheme, language, setLanguage, unreadMessagesCount } = useGlobalStore();
   const [activeSection, setActiveSection] = useState('dashboard');
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -112,7 +112,8 @@ export default function Layout() {
 
   const userRole = currentUser?.role?.toLowerCase();
   const isAdmin = userRole === 'admin' || userRole === 'manager';
-  const unreadCount = notifications?.filter((n) => n.is_read === false).length || 0;
+  const officialUnread = notifications?.filter((n) => n.is_read === false).length || 0;
+  const unreadCount = officialUnread + (unreadUserNotifCount || 0);
 
   const visibleNav = NAV_ITEMS.filter((item) => {
     if (item.adminRoleOnly && userRole !== 'admin') return false;
