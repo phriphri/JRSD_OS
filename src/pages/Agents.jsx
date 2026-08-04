@@ -164,8 +164,8 @@ function AgentCard({ agent, onClick, isLast }) {
   const photoUrl = agent.avatar_url || agent.avatarUrl || null;
   const [hovered, setHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const projectCount = agent.activeProjects?.length || 0;
-  const taskCount = Math.floor(Math.random() * 12) + 1; // simulated
+  const projectCount = agent.projectsCount ?? agent.activeProjects?.length ?? 0;
+  const taskCount = agent.taskCount ?? agent.tasks_count ?? agent.tasksCount ?? 0;
   const lastActivity = useMemo(() => timeAgo(), []);
 
   return (
@@ -334,7 +334,8 @@ function AgentModal({ agent, currentUser, onClose, onChangeRole, onToggleStatus,
   const photoUrl = agent.avatar_url || agent.avatarUrl || null;
   const isBusy = busyId === agent.id;
   const isSelf = agent.id === currentUser?.id;
-  const projectCount = agent.activeProjects?.length || 0;
+  const projectCount = agent.projectsCount ?? agent.activeProjects?.length ?? 0;
+  const taskCount = agent.taskCount ?? agent.tasks_count ?? agent.tasksCount ?? 0;
 
   return (
     <div
@@ -440,6 +441,7 @@ function AgentModal({ agent, currentUser, onClose, onChangeRole, onToggleStatus,
               { icon: <Briefcase size={13} />, label: 'Fonction', value: agent.fonction || '—' },
               { icon: <Users size={13} />, label: 'Équipe', value: agent.team?.nom || '—' },
               { icon: <Shield size={13} />, label: 'Projets actifs', value: projectCount > 0 ? `${projectCount} ${t.projects}` : '0' },
+              { icon: <CheckSquare size={13} />, label: 'Tâches', value: taskCount > 0 ? `${taskCount} ${t.tasks}` : '0' },
             ].map(({ icon, label, value }, i, arr) => (
               <div
                 key={label}

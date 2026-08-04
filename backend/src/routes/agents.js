@@ -70,8 +70,15 @@ async function ensureSchema() {
     }
   }
 
-  // Ensure tasks/projects exist (progress calculation relies on them)
-  // If they don't exist, subsequent queries will fail and we surface a clear 500.
+  // Ensure project_members table exists
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS project_members (
+      project_id INT UNSIGNED NOT NULL,
+      user_id    INT UNSIGNED NOT NULL,
+      added_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (project_id, user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
 
   schemaReady = true;
 }
@@ -163,6 +170,11 @@ router.get('/users', protect, adminOnly, async (_req, res) => {
       FROM projects p
       WHERE p.statut <> 'termine' AND p.manager_id IS NOT NULL
       UNION
+      SELECT pm.user_id AS user_id, pm.project_id AS project_id
+      FROM project_members pm
+      JOIN projects p ON p.id = pm.project_id
+      WHERE p.statut <> 'termine'
+      UNION
       SELECT t.assignee_id AS user_id, t.project_id AS project_id
       FROM tasks t
       JOIN projects p ON p.id = t.project_id
@@ -178,13 +190,28 @@ router.get('/users', protect, adminOnly, async (_req, res) => {
       projectIdsByUser.get(uid).add(pid);
     }
 
+    const [userTaskCounts] = await pool.execute(
+      `
+      SELECT t.assignee_id AS user_id, COUNT(t.id) AS task_count
+      FROM tasks t
+      WHERE t.assignee_id IS NOT NULL
+      GROUP BY t.assignee_id
+      `
+    );
+
+    const taskCountByUserId = new Map(
+      userTaskCounts.map((tc) => [Number(tc.user_id), Number(tc.task_count)])
+    );
+
     const results = users.map((u) => {
       const { prenom, nom } = splitName(u.nom_prenom);
       const ids = projectIdsByUser.get(Number(u.id)) || new Set();
-      const activeProjects = [...ids]
+      const userActiveProjects = [...ids]
         .map((pid) => activeProjectsById.get(pid))
         .filter(Boolean)
         .sort((a, b) => new Date(b.date_debut || 0) - new Date(a.date_debut || 0));
+
+      const tasksCount = Number(taskCountByUserId.get(Number(u.id)) || 0);
 
       return {
         id: u.id,
@@ -198,7 +225,10 @@ router.get('/users', protect, adminOnly, async (_req, res) => {
         cv_url: u.cv_url || null,
         avatar_url: u.avatar || null,
         team: u.team_id ? { id: u.team_id, nom: u.team_nom } : null,
-        activeProjects,
+        activeProjects: userActiveProjects,
+        projectsCount: userActiveProjects.length,
+        taskCount: tasksCount,
+        tasks_count: tasksCount,
       };
     });
 
