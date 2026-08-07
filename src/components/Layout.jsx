@@ -62,9 +62,12 @@ export default function Layout() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const scrollRef = useRef(null);
   const lastScrollTime = useRef(0);
+  const savedScrollY = useRef(0);
 
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchEnd, setTouchEnd] = useState(null);
+  const [touchStartX, setTouchStartX] = useState(null);
+  const [touchStartY, setTouchStartY] = useState(null);
+  const [touchEndX, setTouchEndX] = useState(null);
+  const [touchEndY, setTouchEndY] = useState(null);
   const minSwipeDistance = 50;
 
   useEffect(() => {
@@ -74,39 +77,53 @@ export default function Layout() {
 
   useEffect(() => {
     if (mobileMenuOpen) {
+      savedScrollY.current = window.scrollY;
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
       document.body.style.width = '100%';
+      document.body.style.top = `-${savedScrollY.current}px`;
     } else {
       document.body.style.overflow = '';
       document.body.style.position = '';
       document.body.style.width = '';
+      document.body.style.top = '';
+      window.scrollTo(0, savedScrollY.current);
     }
     return () => {
       document.body.style.overflow = '';
       document.body.style.position = '';
       document.body.style.width = '';
+      document.body.style.top = '';
     };
   }, [mobileMenuOpen]);
 
   const onTouchStart = (e) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
+    setTouchEndX(null);
+    setTouchEndY(null);
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchStartY(e.targetTouches[0].clientY);
   };
 
-  const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
+  const onTouchMove = (e) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+    setTouchEndY(e.targetTouches[0].clientY);
+  };
 
   const onTouchEndHandler = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
+    if (!touchStartX || !touchEndX || !touchStartY || !touchEndY) return;
+    const diffX = touchStartX - touchEndX;
+    const diffY = touchStartY - touchEndY;
 
-    if (isLeftSwipe && mobileMenuOpen) {
-      setMobileMenuOpen(false);
-    }
-    if (isRightSwipe && !mobileMenuOpen && touchStart < 40) {
-      setMobileMenuOpen(true);
+    if (Math.abs(diffX) > Math.abs(diffY)) {
+      const isLeftSwipe = diffX > minSwipeDistance;
+      const isRightSwipe = diffX < -minSwipeDistance;
+
+      if (isLeftSwipe && mobileMenuOpen) {
+        setMobileMenuOpen(false);
+      }
+      if (isRightSwipe && !mobileMenuOpen && touchStartX < 40) {
+        setMobileMenuOpen(true);
+      }
     }
   };
 
@@ -133,26 +150,6 @@ export default function Layout() {
     setMobileMenuOpen(false);
     scrollRef.current?.scrollTo({ top: 0, behavior: 'instant' });
   }, [visibleNav]);
-
-  const handleScroll = (e) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.target;
-    if (scrollTop + clientHeight >= scrollHeight - 15) {
-      const now = Date.now();
-      if (now - lastScrollTime.current > 1500) {
-        lastScrollTime.current = now;
-        const currentIndex = visibleNav.findIndex((item) => item.id === activeSection);
-        if (currentIndex !== -1) {
-          let nextIndex = (currentIndex + 1) % visibleNav.length;
-          while (visibleNav[nextIndex].id === 'messages' && nextIndex !== currentIndex) {
-            nextIndex = (nextIndex + 1) % visibleNav.length;
-          }
-          if (visibleNav[nextIndex].id !== 'messages') {
-            navigateToSection(visibleNav[nextIndex].id);
-          }
-        }
-      }
-    }
-  };
 
   const renderActivePage = () => {
     switch (activeSection) {

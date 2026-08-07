@@ -500,9 +500,9 @@ export const useGlobalStore = create((set, get) => ({
     }
   },
 
-  updateTaskStatus: async (taskId, statut) => {
+  updateTaskStatus: async (taskId, statut, description) => {
     try {
-      const res = await api.tasks.updateStatus(taskId, statut);
+      const res = await api.tasks.updateStatus(taskId, statut, description);
       if (res.success) {
         const patch = (list) => list.map((t) => (t.id === taskId ? res.task : t));
         set((state) => ({

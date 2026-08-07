@@ -72,7 +72,7 @@ export default function Kanban() {
   const [dragOverCol, setDragOverCol] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isTouch, setIsTouch] = useState(false);
+  const [isTouch] = useState(() => typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
 
   // Mobile state
   const [selectedMobileTab, setSelectedMobileTab] = useState('a_faire');
@@ -81,7 +81,6 @@ export default function Kanban() {
   const [openMoveMenuId, setOpenMoveMenuId] = useState(null);
 
   useEffect(() => {
-    setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0);
     const load = async () => {
       setLoading(true);
       await fetchKanbanBoard();

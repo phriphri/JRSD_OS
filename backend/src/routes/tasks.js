@@ -383,13 +383,14 @@ router.post(
   }
 );
 
-/** PUT /api/tasks/:id/status — Mise à jour du statut (assigné, manager de l'équipe/projet, admin) */
+/** PUT /api/tasks/:id/status — Mise à jour du statut + description optionnelle (assigné, manager de l'équipe/projet, admin) */
 router.put(
   '/:id/status',
   protect,
   [
     param('id').isInt().withMessage('ID invalide.'),
     body('statut').isIn(VALID_STATUTS).withMessage('Statut invalide.'),
+    body('description').optional().trim(),
   ],
   validateRequest,
   async (req, res) => {
@@ -442,7 +443,16 @@ router.put(
         }
       }
 
-      await pool.execute('UPDATE tasks SET statut = ? WHERE id = ?', [req.body.statut, id]);
+      // Mise à jour du statut + description optionnelle
+      const { statut, description } = req.body;
+      if (description !== undefined && description !== null) {
+        await pool.execute(
+          'UPDATE tasks SET statut = ?, description = ? WHERE id = ?',
+          [statut, description, id]
+        );
+      } else {
+        await pool.execute('UPDATE tasks SET statut = ? WHERE id = ?', [statut, id]);
+      }
 
       const [rows] = await pool.execute(`${taskSelectSql} WHERE t.id = ?`, [id]);
       const updatedTask = mapTaskRow(rows[0]);
@@ -456,14 +466,14 @@ router.put(
           userId: task.assignee_id,
           type: 'task_status_changed',
           title: `Statut modifié : ${updatedTask.title}`,
-          body: `Nouveau statut : ${statusLabels[req.body.statut] || req.body.statut}`,
+          body: `Nouveau statut : ${statusLabels[statut] || statut}`,
           link: '/tasks',
           entityType: 'tasks',
           entityId: Number(id),
         });
       }
 
-      res.json({ success: true, message: 'Statut mis à jour.', task: updatedTask });
+      res.json({ success: true, message: 'Tâche mise à jour.', task: updatedTask });
     } catch (err) {
       console.error('[PUT /api/tasks/:id/status]', err.message);
       res.status(500).json({ success: false, message: 'Erreur serveur.' });

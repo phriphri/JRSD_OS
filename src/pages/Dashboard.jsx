@@ -523,8 +523,10 @@ function DashboardSection() {
     if (currentUser) loadStats();
   }, [currentUser, loadStats]);
 
+  const t = translations[language === 'EN' ? 'EN' : 'FR'];
+
   if (!currentUser) {
-    return <div className="p-8 text-center text-gray-500">{t.loading_space}</div>;
+    return <div className="p-8 text-center text-gray-500">{t.loading_space || 'Chargement...'}</div>;
   }
 
   // Filtrage des projets côté client pour l'affichage des barres de progression
@@ -535,8 +537,6 @@ function DashboardSection() {
     : [];
 
   const firstName = currentUser?.name?.split(' ')[0] || currentUser?.name || '';
-
-  const t = translations[language === 'EN' ? 'EN' : 'FR'];
 
   return (
     <section id="dashboard" className="scroll-mt-8">

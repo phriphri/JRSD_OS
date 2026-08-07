@@ -164,9 +164,13 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-    updateStatus: (id, statut) => fetchWithAuth(`/tasks/${id}/status`, {
+    updateStatus: (id, statut, description) => fetchWithAuth(`/tasks/${id}/status`, {
       method: 'PUT',
-      body: JSON.stringify({ statut }),
+      body: JSON.stringify(
+        description !== undefined
+          ? { statut, description }
+          : { statut }
+      ),
     }),
   },
   notifications: {

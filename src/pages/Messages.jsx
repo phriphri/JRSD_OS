@@ -82,7 +82,7 @@ function MessageBubble({ msg, isMe, contact, recipientOnline, onEdit, onDelete }
           </button>
         )}
         {menuOpen && isMe && (
-          <div className="absolute -left-32 top-0 z-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 text-sm">
+          <div className="absolute right-0 top-full mt-1 z-10 w-32 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg py-1 text-sm">
             <button type="button" onClick={() => { setEditing(true); setMenuOpen(false); }}
               className="w-full px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2">
               <Pencil className="w-3.5 h-3.5" /> Modifier

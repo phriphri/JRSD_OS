@@ -115,7 +115,7 @@ export default function Tasks() {
     if (!selectedTask) return;
     setPanelSaving(true);
     setPanelError('');
-    const result = await updateTaskStatus(selectedTask.id, panelStatut);
+    const result = await updateTaskStatus(selectedTask.id, panelStatut, panelEvolution);
     setPanelSaving(false);
     if (!result.success) {
       setPanelError(result.message || 'Error');
@@ -246,7 +246,7 @@ export default function Tasks() {
       {selectedTask && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <button type="button" className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={closePanel} aria-label="Fermer" />
-          <aside className="relative w-full max-w-md h-full bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col">
+          <aside className="relative w-full max-w-md h-full bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col min-w-0">
             <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white pr-4">{selectedTask.title}</h3>
               <button type="button" onClick={closePanel} className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
