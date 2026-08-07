@@ -24,3 +24,24 @@
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* ── Global overflow containment ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Prevent images / media from overflowing their container */
+img,
+video,
+iframe {
+  max-width: 100%;
+  height: auto;
+}

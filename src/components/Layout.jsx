@@ -354,7 +354,7 @@ export default function Layout() {
 
         <aside
           className={`md:hidden fixed top-0 left-0 bottom-0 w-72 h-full h-[100dvh] max-h-screen bg-white dark:bg-[#0A0A0A] border-r border-slate-200/60 dark:border-white/10 shadow-2xl z-50 transform transition-transform duration-300 ease-out flex flex-col ${
-            mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+            mobileMenuOpen ? 'translate-x-0 visible' : '-translate-x-full invisible'
           }`}
         >
           <div className="flex items-center justify-between p-5 border-b border-slate-200/60 dark:border-white/10 shrink-0">

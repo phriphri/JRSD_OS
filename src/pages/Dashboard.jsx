@@ -4,16 +4,40 @@ import { api } from '../services/api';
 
 const translations = {
   FR: { 
-    greeting: "Bonjour", org_view: "Vue organisation", team_view: "Vue équipe", pers_view: "Tableau de bord personnel", refresh: "Actualiser",
-    kpi_prog_glob: "Progression globale", kpi_agents: "Agents inscrits", kpi_proj_crees: "Projets créés", kpi_teams: "Équipes",
-    kpi_proj_en_cours: "Projets en cours", kpi_taches_tot: "Tâches totales", kpi_proj_term: "Projets terminés", kpi_alertes: "Alertes urgentes",
-    avancement: "Avancement des projets", aucune_alerte: "Aucune urgence — beau travail !", mes_taches: "Mes tâches personnelles", echeances_imm: "Échéances immédiates"
+    greeting: 'Bonjour', org_view: 'Vue organisation', team_view: 'Vue équipe', pers_view: 'Tableau de bord personnel', refresh: 'Actualiser',
+    kpi_prog_glob: 'Progression globale', kpi_agents: 'Agents inscrits', kpi_proj_crees: 'Projets créés', kpi_teams: 'Équipes',
+    kpi_proj_en_cours: 'Projets en cours', kpi_taches_tot: 'Tâches totales', kpi_proj_term: 'Projets terminés', kpi_alertes: 'Alertes urgentes',
+    avancement: 'Avancement des projets', aucune_alerte: 'Aucune urgence — beau travail !', mes_taches: 'Mes tâches personnelles', echeances_imm: 'Échéances immédiates',
+    upcoming_programs: 'Prochains programmes au planning', all_org: 'Toute l\'organisation', your_team: 'Votre équipe',
+    total_proj: 'au total', active_accounts: 'Comptes actifs', in_progress_completed: 'en cours ·', completed: 'terminés', completed_f: 'terminées',
+    reg_teams: 'Équipes enregistrées', status_in_prog: 'Statut « en_cours »', status_completed: 'Statut « terminé »',
+    deadlines_3d: 'Échéances ≤ 3 jours', no_proj_reg: 'Aucun projet enregistré.',
+    status_done: 'Terminé', status_prog: 'En cours', status_wait: 'En attente',
+    urgent_alerts_3d: 'Alertes urgentes — Échéances ≤ 3 jours', task: 'Tâche', project: 'Projet',
+    late: 'retard', today: 'Auj.', days: 'j', managed_proj: 'gérés', active_team: 'Actifs dans votre équipe',
+    completed_score: 'Complété', to_do: 'À faire', in_progress: 'En cours', blocked: 'Bloqué', done: 'Terminées',
+    prog_your_proj: 'Avancement de vos projets', no_proj_man: 'Aucun projet géré.', urgent_team: 'Échéances urgentes — Équipe',
+    perfect: '🎉 Parfait !', good_pace: '👍 Bon rythme', some_delays: '⚡ Quelques retards',
+    tasks_done: 'tâche terminée', tasks_done_plur: 'tâches terminées', loading_space: 'Chargement de votre espace...',
+    err_stats: 'Impossible de charger les statistiques.'
   },
   EN: { 
-    greeting: "Hello", org_view: "Organization view", team_view: "Team view", pers_view: "Personal dashboard", refresh: "Refresh",
-    kpi_prog_glob: "Overall Progress", kpi_agents: "Registered Agents", kpi_proj_crees: "Created Projects", kpi_teams: "Teams",
-    kpi_proj_en_cours: "Active Projects", kpi_taches_tot: "Total Tasks", kpi_proj_term: "Completed Projects", kpi_alertes: "Urgent Alerts",
-    avancement: "Project Progress", aucune_alerte: "No urgent alerts — great job!", mes_taches: "My Personal Tasks", echeances_imm: "Immediate Deadlines"
+    greeting: 'Hello', org_view: 'Organization view', team_view: 'Team view', pers_view: 'Personal dashboard', refresh: 'Refresh',
+    kpi_prog_glob: 'Overall Progress', kpi_agents: 'Registered Agents', kpi_proj_crees: 'Created Projects', kpi_teams: 'Teams',
+    kpi_proj_en_cours: 'Active Projects', kpi_taches_tot: 'Total Tasks', kpi_proj_term: 'Completed Projects', kpi_alertes: 'Urgent Alerts',
+    avancement: 'Project Progress', aucune_alerte: 'No urgent alerts — great job!', mes_taches: 'My Personal Tasks', echeances_imm: 'Immediate Deadlines',
+    upcoming_programs: 'Upcoming planning programs', all_org: 'All organization', your_team: 'Your team',
+    total_proj: 'in total', active_accounts: 'Active accounts', in_progress_completed: 'in progress ·', completed: 'completed', completed_f: 'completed',
+    reg_teams: 'Registered teams', status_in_prog: 'Status « in progress »', status_completed: 'Status « completed »',
+    deadlines_3d: 'Deadlines ≤ 3 days', no_proj_reg: 'No projects registered.',
+    status_done: 'Done', status_prog: 'In progress', status_wait: 'Waiting',
+    urgent_alerts_3d: 'Urgent alerts — Deadlines ≤ 3 days', task: 'Task', project: 'Project',
+    late: 'late', today: 'Today', days: 'd', managed_proj: 'managed', active_team: 'Active in your team',
+    completed_score: 'Completed', to_do: 'To do', in_progress: 'In progress', blocked: 'Blocked', done: 'Done',
+    prog_your_proj: 'Your projects progress', no_proj_man: 'No projects managed.', urgent_team: 'Urgent deadlines — Team',
+    perfect: '🎉 Perfect!', good_pace: '👍 Good pace', some_delays: '⚡ Some delays',
+    tasks_done: 'task completed', tasks_done_plur: 'tasks completed', loading_space: 'Loading your space...',
+    err_stats: 'Unable to load statistics.'
   }
 };
 
@@ -306,7 +330,7 @@ function ManagerDashboard({ stats, projects }) {
         <KPICard delay={80} label={t.kpi_agents} value={nb_membres}
           sub={t.active_team} icon={<IconUsers />} />
         <KPICard delay={160} label={t.kpi_taches_tot} value={taches.total}
-          sub={`${taches.en_cours} en cours · ${taches.termine} terminées`} icon={<IconTask />} />
+          sub={`${taches.en_cours} ${t.in_progress_completed} ${taches.termine} ${t.completed_f}`} icon={<IconTask />} />
         <KPICard delay={240} urgent label={t.kpi_alertes} value={urgent_tasks.length}
           sub={t.deadlines_3d} icon={<IconAlert />} />
       </div>
@@ -314,7 +338,7 @@ function ManagerDashboard({ stats, projects }) {
       {/* Mes KPIs personnels */}
       <div className="bg-white dark:bg-[#0A0A0A] border border-slate-200/60 dark:border-white/10 rounded-2xl p-4 sm:p-6 shadow-sm">
         <h3 className="text-slate-900 dark:text-white font-semibold text-sm sm:text-base mb-3 sm:mb-4">{t.mes_taches}</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
           <div className="text-center p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
             <p className="text-2xl font-bold text-slate-900 dark:text-white">{myScore}%</p>
             <p className="text-xs text-slate-500 mt-0.5">{t.completed_score}</p>

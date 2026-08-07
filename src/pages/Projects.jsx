@@ -39,6 +39,10 @@ const TRANSLATIONS = {
     load_more: 'Voir plus',
     showing: 'Affichage de',
     on: 'sur',
+    overall_prog: 'Progression globale',
+    tasks_done: 'tâche(s) terminée(s)',
+    manager_resp: 'Chef de projet',
+    no_collab: 'Aucun collaborateur',
     statuses: {
       en_attente: 'En attente',
       en_cours: 'En cours',
@@ -78,6 +82,10 @@ const TRANSLATIONS = {
     load_more: 'Load more',
     showing: 'Showing',
     on: 'of',
+    overall_prog: 'Overall Progress',
+    tasks_done: 'task(s) completed',
+    manager_resp: 'Project Manager',
+    no_collab: 'No collaborators',
     statuses: {
       en_attente: 'Pending',
       en_cours: 'In progress',

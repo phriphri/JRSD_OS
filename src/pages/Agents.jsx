@@ -188,7 +188,7 @@ function AgentCard({ agent, onClick, isLast }) {
       onClick={onClick}
     >
       {/* Profile & Name Section */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 200, flex: '1 1 200px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: '1 1 150px' }}>
         <Avatar photoUrl={photoUrl} name={agent.nom_prenom} size={42} showOnline statut={agent.statut} />
         <div style={{ minWidth: 0 }}>
           <p style={{
@@ -211,7 +211,7 @@ function AgentCard({ agent, onClick, isLast }) {
       </div>
 
       {/* Role & Team Badges */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: '1 1 180px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: '0 1 auto', minWidth: 0 }}>
         <span style={{
           fontSize: 10, fontWeight: 700, padding: '3px 10px',
           borderRadius: 20, background: rc.bg, color: rc.color,
@@ -240,14 +240,8 @@ function AgentCard({ agent, onClick, isLast }) {
         </div>
       </div>
 
-      {/* Stats & Activity (visible on desktop) */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 20,
-        flex: '1 1 200px',
-        justifyContent: 'flex-end',
-      }}>
+      {/* Stats & Activity (hidden on small screens) */}
+      <div className="hidden sm:flex items-center gap-5 shrink-0 justify-end">
         {/* Project & Task counts */}
         <div style={{ display: 'flex', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -267,7 +261,7 @@ function AgentCard({ agent, onClick, isLast }) {
         </div>
 
         {/* Last activity */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 130 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <Clock size={10} style={{ color: 'var(--ac-text-muted)' }} />
           <span style={{ fontSize: 10, color: 'var(--ac-text-muted)', fontWeight: 500 }}>
             {agent.statut === 'actif' ? lastActivity : 'Suspendu'}
@@ -846,6 +840,7 @@ export default function Agents() {
         {/* ── KPI stat cards ── */}
         <div id="agents-kpis" style={{
           display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           gap: 12, marginBottom: 28,
         }}>
           {[
@@ -942,7 +937,7 @@ export default function Agents() {
           <>
             {/* toolbar */}
             <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-              <div style={{ position: 'relative', flex: '1 1 260px', minWidth: 200 }}>
+              <div style={{ position: 'relative', flex: '1 1 200px', minWidth: 0 }}>
                 <Search size={14} style={{
                   position: 'absolute', left: 12, top: '50%',
                   transform: 'translateY(-50%)',
@@ -1004,17 +999,25 @@ export default function Agents() {
                 </p>
               </div>
             ) : (
-              <div id="agents-grid" style={{
-                display: 'grid',
-                gap: 14,
+              <div style={{
+                background: 'var(--ac-card)',
+                border: '1px solid var(--ac-border)',
+                borderRadius: 16,
+                overflow: 'hidden',
               }}>
-                {filteredAgents.map((agent) => (
-                  <AgentCard
-                    key={agent.id}
-                    agent={agent}
-                    onClick={() => setSelectedAgent(agent)}
-                  />
-                ))}
+                <div id="agents-grid" style={{
+                  display: 'grid',
+                  gap: 0,
+                }}>
+                  {filteredAgents.map((agent, idx) => (
+                    <AgentCard
+                      key={agent.id}
+                      agent={agent}
+                      onClick={() => setSelectedAgent(agent)}
+                      isLast={idx === filteredAgents.length - 1}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </>
